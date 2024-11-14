@@ -1,4 +1,4 @@
-package main
+package istio
 
 import (
 	"context"
@@ -11,11 +11,12 @@ import (
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"istio.io/client-go/pkg/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	restclient "k8s.io/client-go/rest"
 )
 
-func createIstioResources(ctx context.Context) error {
+func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
 	// Istio clientset
-	istioClient, err := versioned.NewForConfig(kubeConfig)
+	istioClientSet, err := versioned.NewForConfig(kubeconfig)
 	if err != nil {
 		return fmt.Errorf("failed to create Istio client: %v", err)
 	}
@@ -77,7 +78,7 @@ func createIstioResources(ctx context.Context) error {
 			},
 		},
 	}
-	_, err = istioClient.NetworkingV1alpha3().VirtualServices(namespaceName).Create(ctx, virtualService, metav1.CreateOptions{})
+	_, err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Create(ctx, virtualService, metav1.CreateOptions{})
 	if err != nil {
 		if !errors.IsAlreadyExists(err) {
 			return fmt.Errorf("failed to create VirtualService: %v", err)
@@ -89,15 +90,15 @@ func createIstioResources(ctx context.Context) error {
 	return nil
 }
 
-func deleteIstioResources(ctx context.Context) error {
+func DeleteIstioResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
 	// Istio clientset
-	istioClient, err := versioned.NewForConfig(kubeConfig)
+	istioClientSet, err := versioned.NewForConfig(kubeconfig)
 	if err != nil {
 		return fmt.Errorf("failed to create Istio client: %v", err)
 	}
 	log.Println("[INFO] Clientset of istio set up successfully")
 
-	err = istioClient.NetworkingV1alpha3().VirtualServices(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
+	err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to create VirtualService: %v", err)
