@@ -1,4 +1,4 @@
-package k8s
+package main
 
 import (
 	"context"
@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gold-kou/prism-in-k8s/app/params"
-	"github.com/gold-kou/prism-in-k8s/app/util"
 	"github.com/pingcap/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -17,20 +15,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	restclient "k8s.io/client-go/rest"
 )
 
-const localPrismImage = "my-local-image:latest"
-
-func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
+func createK8sResources(ctx context.Context) error {
 	// create clientset using kubeconfig
-	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
+	clientset, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create clientset: %v", err)
 	}
 
-	// get the latest istio version from istiod pod considering during upgrade, if not found return empty podList
-	podList, err := k8sClientSet.CoreV1().Pods("istio-system").List(ctx, metav1.ListOptions{
+	// get the latest istio version from istiod pod considering during upgrade
+	podList, err := clientset.CoreV1().Pods("istio-system").List(ctx, metav1.ListOptions{
 		LabelSelector: "app=istiod",
 	})
 	if err != nil {
@@ -54,7 +49,7 @@ func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 			},
 		},
 	}
-	_, err = k8sClientSet.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
+	_, err = clientset.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 	if err != nil {
 		if !errors.IsAlreadyExists(err) {
 			return fmt.Errorf("failed to create namespace: %v", err)
@@ -64,19 +59,13 @@ func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 		log.Println("[INFO] Namespace is created successfully")
 	}
 
-	// Prism image
-	prismImage := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s", params.AWSAccountID, params.AWSConfig.Region, resourceName)
-	if params.IsTest {
-		prismImage = localPrismImage
-	}
-
 	// Deployment
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: resourceName,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: util.Int32Ptr(1),
+			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": resourceName,
@@ -89,8 +78,8 @@ func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 					},
 					Annotations: map[string]string{
 						"sidecar.istio.io/inject":                          "true",
-						"sidecar.istio.io/proxyCPULimit":                   params.IstioProxyCPU,
-						"sidecar.istio.io/proxyMemoryLimit":                params.IstioProxyMemory,
+						"sidecar.istio.io/proxyCPULimit":                   istioProxyCPU,
+						"sidecar.istio.io/proxyMemoryLimit":                istioProxyMemory,
 						"traffic.sidecar.istio.io/includeOutboundIPRanges": "*",
 						"proxy.istio.io/config":                            `{ "terminationDrainDuration": "30s" }`,
 					},
@@ -99,16 +88,16 @@ func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 					Containers: []corev1.Container{
 						{
 							Name:  resourceName,
-							Image: prismImage,
+							Image: fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s", awsAccountID, awsConfig.Region, resourceName),
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: int32(params.PrismPort),
+									ContainerPort: int32(prismPort),
 								},
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(params.PrismCPU),
-									corev1.ResourceMemory: resource.MustParse(params.PrismMemory),
+									corev1.ResourceCPU:    resource.MustParse(prismCPU),
+									corev1.ResourceMemory: resource.MustParse(prismMemory),
 								},
 							},
 						},
@@ -117,7 +106,7 @@ func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 			},
 		},
 	}
-	_, err = k8sClientSet.AppsV1().Deployments(namespaceName).Create(ctx, deployment, metav1.CreateOptions{})
+	_, err = clientset.AppsV1().Deployments(namespaceName).Create(ctx, deployment, metav1.CreateOptions{})
 	if err != nil {
 		if !errors.IsAlreadyExists(err) {
 			return fmt.Errorf("failed to create deployment: %v", err)
@@ -146,7 +135,7 @@ func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 			Type: corev1.ServiceTypeClusterIP,
 		},
 	}
-	_, err = k8sClientSet.CoreV1().Services(namespaceName).Create(ctx, service, metav1.CreateOptions{})
+	_, err = clientset.CoreV1().Services(namespaceName).Create(ctx, service, metav1.CreateOptions{})
 	if err != nil {
 		if !errors.IsAlreadyExists(err) {
 			return fmt.Errorf("failed to create service: %v", err)
@@ -158,16 +147,16 @@ func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 	return nil
 }
 
-func DeleteK8sResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
+func deleteK8sResources(ctx context.Context) error {
 	// create clientset using kubeconfig
-	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
+	clientset, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		return fmt.Errorf("clientset creation error: %v", err)
 	}
 	log.Println("[INFO] Clientset of k8s set up successfully")
 
 	// Service
-	err = k8sClientSet.CoreV1().Services(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
+	err = clientset.CoreV1().Services(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete Service: %v", err)
@@ -178,7 +167,7 @@ func DeleteK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 	}
 
 	// Deployment
-	err = k8sClientSet.AppsV1().Deployments(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
+	err = clientset.AppsV1().Deployments(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete Deployment: %v", err)
@@ -189,7 +178,7 @@ func DeleteK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 	}
 
 	// Namespace
-	err = k8sClientSet.CoreV1().Namespaces().Delete(ctx, namespaceName, metav1.DeleteOptions{})
+	err = clientset.CoreV1().Namespaces().Delete(ctx, namespaceName, metav1.DeleteOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete Namespace: %v", err)
@@ -242,16 +231,14 @@ func getLatestVersion(versions []string) (string, error) {
 	maxVersion := versions[0]
 	maxVersionParts, err := parseVersion(maxVersion)
 	if err != nil {
-		// not return err
-		return "", nil
+		return "", err
 	}
 
 	// compare all versions
 	for _, version := range versions[1:] {
 		versionParts, err := parseVersion(version)
 		if err != nil {
-			// not return err
-			return "", nil
+			return "", err
 		}
 
 		if compareVersions(versionParts, maxVersionParts) > 0 {

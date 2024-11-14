@@ -33,9 +33,9 @@ Set the necessary parameters in `params.go`.
 
 At a minimum, you need to set the following parameters:
 
-- MicroserviceName
+- microserviceName
   - Your microservice name
-- MicroserviceNamespace
+- microserviceNamespace
   - Your microservice namespace
 
 ## Step4. Create Mock Resources
@@ -75,28 +75,17 @@ $ make run-delete
 ```
 
 # Parameters
-You can set these parameters in `app/prams/params.go`.
+You can set these parameters in `params.go`.
 
 | Parameter Name                | Description                               | default                        | required |
 |-------------------------------|-------------------------------------------|--------------------------------|----------|
-| MicroserviceName              | Name of microservice                      | ""                             | Yes      |
-| MicroserviceNamespace         | Namespace of microservice                 | ""                             | Yes      |
-| PrismMockSuffix               | Suffix for the mock service name          | "-prism-mock"                  | Yes      |
-| PrismPort                     | Port number for Prism                     | "80"                           | Yes      |
-| PrismCPU                      | CPU request for Prism                     | "1"                            | Yes      |
-| PrismMemory                   | Memory request for Prism                  | "1Gi"                          | Yes      |
-| IstioProxyCPU                 | CPU request of istio                      | "500m"                         | Yes      |
-| IstioProxyMemory              | Memory request for istio                  | "512Mi"                        | Yes      |
-| Timeout                       | Timeout for this tool                     | 10 * time.Minute               | Yes      |
-| EcrTagEnv                     | Value of the CostEnv tag of ECR           | "stg"                          | No       |
-
-# Development
-## Unit Test
-Please install the following tools before running the test:
-
-- kind
-- istio-ctl
-
-```
-$ make test
-```
+| microserviceName              | Name of microservice                      | ""                             | Yes      |
+| microserviceNamespace         | Namespace of microservice                 | ""                             | Yes      |
+| prismMockSuffix               | Suffix for the mock service name          | "-prism-mock"                  | Yes      |
+| prismPort                     | Port number for Prism                     | "80"                           | Yes      |
+| prismCPU                      | CPU request for Prism                     | "1"                            | Yes      |
+| prismMemory                   | Memory request for Prism                  | "1Gi"                          | Yes      |
+| istioProxyCPU                 | CPU request of istio                      | "500m"                         | Yes      |
+| istioProxyMemory              | Memory request for istio                  | "512Mi"                        | Yes      |
+| timeout                       | Timeout for this tool                     | 10 * time.Minute               | Yes      |
+| ecrTagEnv                     | Value of the CostEnv tag of ECR           | "stg"                          | No       |

@@ -1,4 +1,4 @@
-package istio
+package main
 
 import (
 	"context"
@@ -11,12 +11,11 @@ import (
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"istio.io/client-go/pkg/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	restclient "k8s.io/client-go/rest"
 )
 
-func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
+func createIstioResources(ctx context.Context) error {
 	// Istio clientset
-	istioClientSet, err := versioned.NewForConfig(kubeconfig)
+	istioClient, err := versioned.NewForConfig(kubeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create Istio client: %v", err)
 	}
@@ -78,7 +77,7 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 			},
 		},
 	}
-	_, err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Create(ctx, virtualService, metav1.CreateOptions{})
+	_, err = istioClient.NetworkingV1alpha3().VirtualServices(namespaceName).Create(ctx, virtualService, metav1.CreateOptions{})
 	if err != nil {
 		if !errors.IsAlreadyExists(err) {
 			return fmt.Errorf("failed to create VirtualService: %v", err)
@@ -90,15 +89,15 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 	return nil
 }
 
-func DeleteIstioResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
+func deleteIstioResources(ctx context.Context) error {
 	// Istio clientset
-	istioClientSet, err := versioned.NewForConfig(kubeconfig)
+	istioClient, err := versioned.NewForConfig(kubeConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create Istio client: %v", err)
 	}
 	log.Println("[INFO] Clientset of istio set up successfully")
 
-	err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
+	err = istioClient.NetworkingV1alpha3().VirtualServices(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to create VirtualService: %v", err)
