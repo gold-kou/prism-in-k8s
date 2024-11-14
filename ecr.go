@@ -1,4 +1,4 @@
-package registry
+package main
 
 import (
 	"context"
@@ -10,12 +10,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/ecr/types"
-	"github.com/gold-kou/prism-in-k8s/app/params"
 )
 
-func BuildAndPushECR(ctx context.Context) error {
+func buildAndPushECR(ctx context.Context) error {
 	// build Docker image
-	imageTag := params.MicroserviceName + ":latest"
+	imageTag := microserviceName + ":latest"
 	cmd := exec.Command("docker", "build", "-f", "Dockerfile.prism", "-t", imageTag, ".")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to build docker image: %v", err)
@@ -23,18 +22,18 @@ func BuildAndPushECR(ctx context.Context) error {
 	log.Println("[INFO] Docker image is built successfully")
 
 	// create ECR repository
-	ecrClient := ecr.NewFromConfig(params.AWSConfig)
-	repositoryName := params.ResourceName
+	ecrClient := ecr.NewFromConfig(awsConfig)
+	repositoryName := resourceName
 	input := &ecr.CreateRepositoryInput{
 		RepositoryName: aws.String(repositoryName),
 		Tags: []types.Tag{
 			{
 				Key:   aws.String("CostEnv"),
-				Value: aws.String(params.EcrTagEnv),
+				Value: aws.String(ecrTagEnv),
 			},
 			{
 				Key:   aws.String("CostService"),
-				Value: aws.String(params.MicroserviceName),
+				Value: aws.String(microserviceName),
 			},
 		},
 	}
@@ -50,7 +49,7 @@ func BuildAndPushECR(ctx context.Context) error {
 	}
 
 	// tag Docker image for ECR
-	ecrImageTag := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:latest", params.AWSAccountID, params.AWSConfig.Region, repositoryName)
+	ecrImageTag := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:latest", awsAccountID, awsConfig.Region, repositoryName)
 	cmdTag := exec.Command("docker", "tag", imageTag, ecrImageTag)
 	if err := cmdTag.Run(); err != nil {
 		return fmt.Errorf("failed to tag image: %v", err)
@@ -58,7 +57,7 @@ func BuildAndPushECR(ctx context.Context) error {
 	log.Println("[INFO] Docker image tagged successfully")
 
 	// login to ECR
-	loginCommand := fmt.Sprintf("aws ecr get-login-password --region %s | docker login --username AWS --password-stdin %s.dkr.ecr.%s.amazonaws.com", params.AWSConfig.Region, params.AWSAccountID, params.AWSConfig.Region)
+	loginCommand := fmt.Sprintf("aws ecr get-login-password --region %s | docker login --username AWS --password-stdin %s.dkr.ecr.%s.amazonaws.com", awsConfig.Region, awsAccountID, awsConfig.Region)
 	cmdLogin := exec.Command("bash", "-c", loginCommand)
 	if err := cmdLogin.Run(); err != nil {
 		return fmt.Errorf("failed to log in ECR: %v", err)
@@ -74,10 +73,10 @@ func BuildAndPushECR(ctx context.Context) error {
 	return nil
 }
 
-func DeleteECR(ctx context.Context) error {
+func deleteECR(ctx context.Context) error {
 	// Delete ECR
-	ecrClient := ecr.NewFromConfig(params.AWSConfig)
-	repositoryName := params.ResourceName
+	ecrClient := ecr.NewFromConfig(awsConfig)
+	repositoryName := resourceName
 	input := &ecr.DeleteRepositoryInput{
 		RepositoryName: aws.String(repositoryName),
 		Force:          true, // Force delete to remove all images
