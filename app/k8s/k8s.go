@@ -113,6 +113,7 @@ func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 							},
 						},
 					},
+					PriorityClassName: params.PriorityClassName,
 				},
 			},
 		},

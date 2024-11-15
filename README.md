@@ -87,6 +87,7 @@ You can set these parameters in `app/prams/params.go`.
 | PrismMemory                   | Memory request for Prism                  | "1Gi"                          | Yes      |
 | IstioProxyCPU                 | CPU request of istio                      | "500m"                         | Yes      |
 | IstioProxyMemory              | Memory request for istio                  | "512Mi"                        | Yes      |
+| PriorityClassName             | Value of priorityClassName                | "high-priority"                | No       |
 | Timeout                       | Timeout for this tool                     | 10 * time.Minute               | Yes      |
 | EcrTagEnv                     | Value of the CostEnv tag of ECR           | "stg"                          | No       |
 
