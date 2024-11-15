@@ -27,9 +27,10 @@ const (
 	// istio container
 	IstioProxyCPU    = "500m"
 	IstioProxyMemory = "512Mi"
-	// general
-	Timeout   = 10 * time.Minute
-	EcrTagEnv = "stg" // not required
+	// others
+	PriorityClassName = ""
+	Timeout           = 10 * time.Minute
+	EcrTagEnv         = "stg" // not required
 )
 
 func init() {
