@@ -8,6 +8,7 @@ import (
 	"github.com/gold-kou/prism-in-k8s/app/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"istio.io/client-go/pkg/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -21,19 +22,13 @@ func TestCreateIstioResources(t *testing.T) {
 	ctx := context.TODO()
 	kubeconfigPath := clientcmd.NewDefaultPathOptions().GetDefaultFilename()
 	kubeconfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	// create namespace to create a virtualservice
 	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	err = testutil.CreateNamespace(ctx, k8sClientSet, testNamespaceName)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	// test target
 	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName)
@@ -41,17 +36,13 @@ func TestCreateIstioResources(t *testing.T) {
 
 	// verify
 	istioClient, err := versioned.NewForConfig(kubeconfig)
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
 	_, err = istioClient.NetworkingV1alpha3().VirtualServices(testNamespaceName).Get(ctx, testResourceName, metav1.GetOptions{})
 	assert.NoError(t, err)
 
 	// clean up
 	err = testutil.DeleteNamespace(ctx, k8sClientSet, testNamespaceName)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestDeleteIstioResources(t *testing.T) {
@@ -61,27 +52,17 @@ func TestDeleteIstioResources(t *testing.T) {
 	ctx := context.TODO()
 	kubeconfigPath := clientcmd.NewDefaultPathOptions().GetDefaultFilename()
 	kubeconfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	istioClientSet, err := versioned.NewForConfig(kubeconfig)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	// dummy resources
 	err = testutil.CreateNamespace(ctx, k8sClientSet, testNamespaceName)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	err = testutil.CreateVirtualService(ctx, istioClientSet, testNamespaceName, testResourceName)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	// test target
 	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName)
@@ -91,7 +72,5 @@ func TestDeleteIstioResources(t *testing.T) {
 
 	// clean up
 	err = testutil.DeleteNamespace(ctx, k8sClientSet, testNamespaceName)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 }

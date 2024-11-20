@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/gold-kou/prism-in-k8s/app/k8s"
 	"github.com/gold-kou/prism-in-k8s/app/params"
 	"github.com/gold-kou/prism-in-k8s/app/registry"
+	"golang.org/x/xerrors"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -48,14 +48,14 @@ func init() {
 	// AWS config
 	params.AWSConfig, err = config.LoadDefaultConfig(context.Background())
 	if err != nil {
-		panic(fmt.Errorf("failed load AWS config: %v", err))
+		panic(xerrors.Errorf("failed load AWS config: %v", err))
 	}
 
 	// get AWS account ID
 	stsClient := sts.NewFromConfig(params.AWSConfig)
 	result, err := stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 	if err != nil {
-		panic(fmt.Errorf("failed to get caller identity: %v", err))
+		panic(xerrors.Errorf("failed to get caller identity: %v", err))
 	}
 	params.AWSAccountID = *result.Account
 
@@ -63,7 +63,7 @@ func init() {
 	kubeconfigPath := clientcmd.NewDefaultPathOptions().GetDefaultFilename()
 	kubeConfig, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to build Kubeconfig: %v", err))
+		panic(xerrors.Errorf("failed to build Kubeconfig: %v", err))
 	}
 }
 

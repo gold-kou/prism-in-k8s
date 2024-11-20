@@ -1,10 +1,11 @@
 package params
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"golang.org/x/xerrors"
 )
 
 var (
@@ -14,6 +15,9 @@ var (
 	NamespaceName string
 	IsTest        bool
 )
+
+var errEmptyParameter = errors.New("empty parameter found")
+var errUnsupportedParameterType = errors.New("unsupported parameter type")
 
 const (
 	// name
@@ -61,18 +65,18 @@ func ValidateParams() error {
 		switch v := value.(type) {
 		case string:
 			if v == "" && name != "ecrTagEnv" {
-				return fmt.Errorf("empty parameter found: %s", name)
+				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		case int:
 			if v == 0 {
-				return fmt.Errorf("empty parameter found: %s", name)
+				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		case time.Duration:
 			if v == 0*time.Millisecond {
-				return fmt.Errorf("empty parameter found: %s", name)
+				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		default:
-			return fmt.Errorf("unsupported parameter type: %s", name)
+			return xerrors.Errorf("%w: %s", errUnsupportedParameterType, name)
 		}
 	}
 	return nil

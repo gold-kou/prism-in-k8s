@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/pingcap/errors v0.11.4
 	github.com/stretchr/testify v1.8.4
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
 	istio.io/api v1.22.3-0.20240703105953-437a88321a16
 	istio.io/client-go v1.22.3
 	k8s.io/api v0.30.2
