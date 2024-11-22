@@ -8,10 +8,9 @@ This should be especially useful for load testing or developing microservice cli
 ![Overview](https://github.com/user-attachments/assets/0666cc59-160e-441e-8f90-b7f2ab2a602a)
 
 # Step-by-Step Usage
-## Requirements on Your Local Machine
+## Step0. Requirements on Your Local Machine
 - AWS and Kubernetes credentials
 - Go
-- AWS CLI
 - kubectl
 - Docker
 
