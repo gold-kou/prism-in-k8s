@@ -2,10 +2,12 @@ package registry
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
 	"os/exec"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
@@ -68,9 +70,8 @@ func BuildAndPushECR(ctx context.Context) error {
 	log.Println("[INFO] Docker image tagged successfully")
 
 	// login to ECR
-	loginCommand := fmt.Sprintf("aws ecr get-login-password --region %s | docker login --username AWS --password-stdin %s.dkr.ecr.%s.amazonaws.com", params.AWSConfig.Region, params.AWSAccountID, params.AWSConfig.Region)
-	cmdLogin := exec.Command("bash", "-c", loginCommand)
-	if err := cmdLogin.Run(); err != nil {
+	err = loginToECR(ctx, params.AWSConfig, params.AWSAccountID)
+	if err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToLoginECR, err)
 	}
 	log.Println("[INFO] Logged in ECR successfully")
@@ -81,6 +82,47 @@ func BuildAndPushECR(ctx context.Context) error {
 		return xerrors.Errorf("%w: %w", errFailedToPushImage, err)
 	}
 	log.Println("[INFO] Docker image is pushed to ECR successfully")
+	return nil
+}
+
+func loginToECR(ctx context.Context, awsConfig aws.Config, awsAccountID string) error {
+	ecrClient := ecr.NewFromConfig(awsConfig)
+
+	// Get the authorization token
+	authTokenOutput, err := ecrClient.GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{
+		RegistryIds: []string{awsAccountID},
+	})
+	if err != nil {
+		return fmt.Errorf("%w: %w", errFailedToLoginECR, err)
+	}
+
+	if len(authTokenOutput.AuthorizationData) == 0 {
+		return fmt.Errorf("%w: no authorization data found", errFailedToLoginECR)
+	}
+
+	authData := authTokenOutput.AuthorizationData[0]
+	decodedToken, err := base64.StdEncoding.DecodeString(*authData.AuthorizationToken)
+	if err != nil {
+		return fmt.Errorf("%w: %w", errFailedToLoginECR, err)
+	}
+
+	decodedTokenParts := 2
+	parts := strings.SplitN(string(decodedToken), ":", decodedTokenParts)
+	if len(parts) != decodedTokenParts {
+		return fmt.Errorf("%w: invalid authorization token format", errFailedToLoginECR)
+	}
+
+	username := parts[0]
+	password := parts[1]
+	registry := *authData.ProxyEndpoint
+
+	loginCmd := exec.Command("docker", "login", "--username", username, "--password-stdin", registry)
+	loginCmd.Stdin = strings.NewReader(password)
+	output, err := loginCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%w: %w\n%s", errFailedToLoginECR, err, string(output))
+	}
+
 	return nil
 }
 
