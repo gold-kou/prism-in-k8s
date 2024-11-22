@@ -1,0 +1,76 @@
+name: main
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - closed
+
+permissions:
+  contents: read # for actions/checkout
+
+jobs:
+  setup-and-test:
+    name: Setup Test Cluster and Execute Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.25.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      # to avoid to be overwritten by actions/checkout, move to /usr/local
+      - name: Install istioctl
+        run: |
+          curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.24.0 sh -
+          sudo mv istio-1.24.0/bin/istioctl /usr/local/bin
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          make test-ci
+
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.60
+
+  check-openapi-empty:
+    name: Check if openapi.yaml is empty
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Check if openapi.yaml is empty
+        run: |
+          if [ -s openapi.yaml ]; then
+            echo "Error: openapi.yaml is not empty"
+            exit 1
+          else
+            echo "openapi.yaml is empty"
+          fi

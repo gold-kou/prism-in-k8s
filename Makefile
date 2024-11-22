@@ -39,3 +39,9 @@ kind-down:
 test: kind-up
 	@trap '$(MAKE) kind-down' EXIT; \
 	$(GO) test ./... -v -shuffle=on -p 1
+
+test-ci: kind-up
+	$(GO) test ./... -v -shuffle=on -p 1
+
+lint:
+	golangci-lint run

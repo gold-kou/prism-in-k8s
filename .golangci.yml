@@ -1,0 +1,81 @@
+run:
+  timeout: 3m
+  tests: true
+
+linters-settings:
+  forbidigo:
+    forbid:
+      - ^(fmt\.Print(|f|ln)|print|println)$ # default pattern
+      - time\.Now
+  funlen:
+    lines: 100
+    statements: 65
+  tagliatelle:
+    case:
+      rules:
+        json: snake
+  varnamelen:
+    max-distance: 30
+    min-name-length: 3 # default
+    ignore-names:
+      - tt # test table
+      - err # error
+  cyclop:
+    max-complexity: 20
+  nestif:
+    min-complexity: 10
+
+# enable-all first, then disable specific linters
+linters:
+  enable-all: true
+  disable:
+    - exhaustruct # similar to exhaustivestruct
+    - gochecknoglobals # to allow static variables
+    - gochecknoinits  # to allow static variables
+    - godox # to allow future TODOs
+    - gofumpt # prefer gofmt to adhere to the standard
+    - ireturn # prefer to use unexported structs and constructors returning interfaces
+    - lll # prefer not to break lines for easier grep
+    - nlreturn # do not enforce newline rules
+    - nonamedreturns # prefer named returns for multiple same-type return values
+    - paralleltest # conflicts with t.Setenv
+    - tparallel # conflicts with t.Setenv
+    - wsl # do not enforce newline rules
+    - godot # do not enforce comment rules
+    - rowserrcheck # disabled because of generics
+    - sqlclosecheck # disabled because of generics
+    - wastedassign # disabled because of generics
+    - musttag # exported fields are not always meant to be marshaled
+    - nilerr # to return nil errors
+    - testifylint # to use assert.NoError
+
+issues:
+  exclude-rules:
+    - linters:
+        - forbidigo
+      text: time.Now
+      path: _test\.go
+    - linters:
+        - staticcheck
+      text: "SA4005" # false positive when assigning to variables declared outside the scope
+    - linters:
+        - gosmopolitan
+      text: "string literal contains rune in Han script" # warning for string literals containing Chinese characters
+    - linters:
+        - depguard
+      text: "is not allowed from list 'Main'" # to allow external libraries
+    - linters:
+        - gosec
+      text: "G115" # unreasonable for uint32
+    - path: _test\.go
+      linters:
+        - cyclop
+        - dupl
+        - funlen
+        - gocognit
+        - noctx
+        - gocyclo
+        - maintidx
+    - path: testutil/*
+      linters:
+        - wrapcheck

@@ -16,6 +16,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const servicePort = 80
+
 func CreateNamespace(ctx context.Context, clientset *kubernetes.Clientset, namespace string) error {
 	n := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -95,8 +97,8 @@ func CreateService(ctx context.Context, clientset *kubernetes.Clientset, namespa
 			Ports: []corev1.ServicePort{
 				{
 					Protocol:   corev1.ProtocolTCP,
-					Port:       80,
-					TargetPort: intstr.FromInt(80),
+					Port:       servicePort,
+					TargetPort: intstr.FromInt(servicePort),
 				},
 			},
 			Type: corev1.ServiceTypeClusterIP,
