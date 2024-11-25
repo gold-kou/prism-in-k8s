@@ -25,7 +25,7 @@ var (
 	errFailedToDeleteECR        = errors.New("failed to delete ECR repository")
 )
 
-func BuildAndPushECR(ctx context.Context) error {
+func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, resourceName string) error {
 	// build Docker image
 	imageTag := params.MicroserviceName + ":latest"
 	cmd := exec.Command("docker", "build", "-f", "Dockerfile.prism", "-t", imageTag, ".")
@@ -34,21 +34,23 @@ func BuildAndPushECR(ctx context.Context) error {
 	}
 	log.Println("[INFO] Docker image is built successfully")
 
+	// ECR tags
+	tags := []types.Tag{}
+	for _, ecrTag := range params.EcrTags {
+		if ecrTag.Key != "" || ecrTag.Value != "" {
+			tags = append(tags, types.Tag{
+				Key:   aws.String(ecrTag.Key),
+				Value: aws.String(ecrTag.Value),
+			})
+		}
+	}
+
 	// create ECR repository
-	ecrClient := ecr.NewFromConfig(params.AWSConfig)
-	repositoryName := params.ResourceName
+	ecrClient := ecr.NewFromConfig(awsConfig)
+	repositoryName := resourceName
 	input := &ecr.CreateRepositoryInput{
 		RepositoryName: aws.String(repositoryName),
-		Tags: []types.Tag{
-			{
-				Key:   aws.String("CostEnv"),
-				Value: aws.String(params.EcrTagEnv),
-			},
-			{
-				Key:   aws.String("CostService"),
-				Value: aws.String(params.MicroserviceName),
-			},
-		},
+		Tags:           tags,
 	}
 	_, err := ecrClient.CreateRepository(ctx, input)
 	if err != nil {
@@ -62,7 +64,7 @@ func BuildAndPushECR(ctx context.Context) error {
 	}
 
 	// tag Docker image for ECR
-	ecrImageTag := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:latest", params.AWSAccountID, params.AWSConfig.Region, repositoryName)
+	ecrImageTag := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:latest", awsAccountID, awsConfig.Region, repositoryName)
 	cmdTag := exec.Command("docker", "tag", imageTag, ecrImageTag)
 	if err := cmdTag.Run(); err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToTagImage, err)
@@ -70,7 +72,7 @@ func BuildAndPushECR(ctx context.Context) error {
 	log.Println("[INFO] Docker image tagged successfully")
 
 	// login to ECR
-	err = loginToECR(ctx, params.AWSConfig, params.AWSAccountID)
+	err = loginToECR(ctx, awsConfig, awsAccountID)
 	if err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToLoginECR, err)
 	}
@@ -126,10 +128,10 @@ func loginToECR(ctx context.Context, awsConfig aws.Config, awsAccountID string) 
 	return nil
 }
 
-func DeleteECR(ctx context.Context) error {
+func DeleteECR(ctx context.Context, awsConfig aws.Config, resourceName string) error {
 	// Delete ECR
-	ecrClient := ecr.NewFromConfig(params.AWSConfig)
-	repositoryName := params.ResourceName
+	ecrClient := ecr.NewFromConfig(awsConfig)
+	repositoryName := resourceName
 	input := &ecr.DeleteRepositoryInput{
 		RepositoryName: aws.String(repositoryName),
 		Force:          true, // Force delete to remove all images

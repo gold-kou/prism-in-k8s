@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/gold-kou/prism-in-k8s/app/params"
 	"github.com/gold-kou/prism-in-k8s/app/util"
 	"github.com/pingcap/errors"
@@ -38,7 +39,7 @@ var (
 	errFailedToGetLatestVersion = errors.New("failed to get latest version")
 )
 
-func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
+func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istTest bool) error {
 	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToCreateClientSet, err)
@@ -49,7 +50,7 @@ func CreateK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 		return xerrors.Errorf("%w: %w", errFailedToCreateNameSpace, err)
 	}
 
-	err = crateDeployment(ctx, k8sClientSet, namespaceName, resourceName)
+	err = crateDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, istTest)
 	if err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToCreateDeployment, err)
 	}
@@ -100,10 +101,10 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 	return nil
 }
 
-func crateDeployment(ctx context.Context, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string) error {
+func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Config, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string, isTest bool) error {
 	// Prism image
-	prismImage := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s", params.AWSAccountID, params.AWSConfig.Region, resourceName)
-	if params.IsTest {
+	prismImage := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s", awsAccountID, awsConfig.Region, resourceName)
+	if isTest {
 		prismImage = localPrismImage
 	}
 

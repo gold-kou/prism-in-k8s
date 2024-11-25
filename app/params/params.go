@@ -1,51 +1,107 @@
 package params
 
 import (
+	_ "embed"
 	"errors"
+	"fmt"
+	"log"
+	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"golang.org/x/xerrors"
+	"gopkg.in/yaml.v2"
 )
 
 var (
-	AWSConfig     aws.Config
-	AWSAccountID  string
-	ResourceName  string
-	NamespaceName string
-	IsTest        bool
+	errEmptyParameter           = errors.New("empty parameter found")
+	errUnsupportedParameterType = errors.New("unsupported parameter type")
+	errFailedToOpenConfigFile   = errors.New("failed to open config file")
+	errFailedToDecodeConfigFile = errors.New("failed to decode config file")
 )
 
-var errEmptyParameter = errors.New("empty parameter found")
-var errUnsupportedParameterType = errors.New("unsupported parameter type")
-
-const (
+var (
 	// name
-	MicroserviceName      = "" // set your microservice name
-	MicroserviceNamespace = "" // set your microservice namespace
-	PrismMockSuffix       = "-prism-mock"
+	MicroserviceName      string
+	MicroserviceNamespace string
+	PrismMockSuffix       string
 	// prism container
-	PrismPort   = 80
-	PrismCPU    = "1"
-	PrismMemory = "1Gi"
+	PrismPort   int
+	PrismCPU    string
+	PrismMemory string
 	// istio container
-	IstioProxyCPU    = "500m"
-	IstioProxyMemory = "512Mi"
+	IstioProxyCPU    string
+	IstioProxyMemory string
 	// others
-	PriorityClassName = ""
-	Timeout           = 10 * time.Minute
-	EcrTagEnv         = "stg" // not required
+	PriorityClassName string
+	Timeout           time.Duration
+	EcrTags           []ECRTag
 )
+
+type Config struct {
+	MicroserviceName      string        `yaml:"microservice_name"`
+	MicroserviceNamespace string        `yaml:"microservice_namespace"`
+	PrismMockSuffix       string        `yaml:"prism_mock_suffix"`
+	PrismPort             int           `yaml:"prism_port"`
+	PrismCPU              string        `yaml:"prism_cpu"`
+	PrismMemory           string        `yaml:"prism_memory"`
+	IstioProxyCPU         string        `yaml:"istio_proxy_cpu"`
+	IstioProxyMemory      string        `yaml:"istio_proxy_memory"`
+	PriorityClassName     string        `yaml:"priority_class_name"`
+	Timeout               time.Duration `yaml:"timeout"`
+	EcrTags               []ECRTag      `yaml:"ecr_tags"`
+}
+
+type ECRTag struct {
+	Key   string `yaml:"key"`
+	Value string `yaml:"value"`
+}
 
 func init() {
-	// resource name
-	ResourceName = "test-microservice"
-	NamespaceName = "test-namespace"
-	if MicroserviceName != "" && MicroserviceNamespace != "" {
-		ResourceName = MicroserviceName + PrismMockSuffix
-		NamespaceName = MicroserviceNamespace + PrismMockSuffix
+	path := os.Getenv("PARAMS_CONFIG_PATH")
+	if path == "" {
+		log.Fatal("PARAMS_CONFIG_PATH is not set")
 	}
+	config, err := LoadConfig(path)
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	MicroserviceName = config.MicroserviceName
+	MicroserviceNamespace = config.MicroserviceNamespace
+	PrismMockSuffix = config.PrismMockSuffix
+	PrismPort = config.PrismPort
+	PrismCPU = config.PrismCPU
+	PrismMemory = config.PrismMemory
+	IstioProxyCPU = config.IstioProxyCPU
+	IstioProxyMemory = config.IstioProxyMemory
+	PriorityClassName = config.PriorityClassName
+	Timeout = config.Timeout
+	EcrTags = config.EcrTags
 }
+
+func LoadConfig(filename string) (*Config, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errFailedToOpenConfigFile, err)
+	}
+	defer file.Close()
+
+	var config Config
+	decoder := yaml.NewDecoder(file)
+	if err := decoder.Decode(&config); err != nil {
+		return nil, fmt.Errorf("%w: %w", errFailedToDecodeConfigFile, err)
+	}
+
+	return &config, nil
+}
+
+// func LoadConfig(data []byte) (*Config, error) {
+// 	var config Config
+// 	if err := yaml.Unmarshal(data, &config); err != nil {
+// 		return nil, fmt.Errorf("failed to decode config data: %w", err)
+// 	}
+// 	return &config, nil
+// }
 
 func ValidateParams() error {
 	params := map[string]interface{}{
@@ -58,13 +114,12 @@ func ValidateParams() error {
 		"istioProxyCPU":         IstioProxyCPU,
 		"istioProxyMemory":      IstioProxyMemory,
 		"timeout":               Timeout,
-		"ecrTagEnv":             EcrTagEnv,
 	}
 
 	for name, value := range params {
 		switch v := value.(type) {
 		case string:
-			if v == "" && name != "ecrTagEnv" {
+			if v == "" {
 				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		case int:

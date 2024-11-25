@@ -7,11 +7,11 @@ build:
 	$(GO) build -o $(BINARY_NAME) .
 
 run-create: build
-	./$(BINARY_NAME) -create
+	PARAMS_CONFIG_PATH=config/params.yaml ./$(BINARY_NAME) -create
 	$(MAKE) clean
 
 run-delete: build
-	./$(BINARY_NAME) -delete
+	PARAMS_CONFIG_PATH=config/params.yaml ./$(BINARY_NAME) -delete
 	$(MAKE) clean
 
 clean:
@@ -38,10 +38,10 @@ kind-down:
 
 test: kind-up
 	@trap '$(MAKE) kind-down' EXIT; \
-	$(GO) test ./... -v -shuffle=on -p 1
+	PARAMS_CONFIG_PATH=../../config/params.yaml $(GO) test ./... -v -shuffle=on -p 1
 
 test-ci: kind-up
-	$(GO) test ./... -v -shuffle=on -p 1
+	PARAMS_CONFIG_PATH=../../config/params.yaml $(GO) test ./... -v -shuffle=on -p 1
 
 lint:
 	golangci-lint run

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/gold-kou/prism-in-k8s/app/k8s"
 	"github.com/gold-kou/prism-in-k8s/app/testutil"
 	"github.com/google/uuid"
@@ -18,13 +19,16 @@ func TestCreateK8sResources(t *testing.T) {
 	testNamespaceName := "test-namespace" + uuid.NewString()
 	testResourceName := "test-resource" + uuid.NewString()
 
+	dummyAWSAccountID := "123456789012"
 	ctx := context.TODO()
+	awsConfig, err := config.LoadDefaultConfig(ctx)
+	require.NoError(t, err)
 	kubeconfigPath := clientcmd.NewDefaultPathOptions().GetDefaultFilename()
 	kubeconfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 	require.NoError(t, err)
 
 	// test target
-	err = k8s.CreateK8sResources(ctx, kubeconfig, testNamespaceName, testResourceName)
+	err = k8s.CreateK8sResources(ctx, dummyAWSAccountID, awsConfig, kubeconfig, testNamespaceName, testResourceName, true)
 	require.NoError(t, err)
 
 	// verify
