@@ -7,7 +7,7 @@ This should be especially useful for load testing or developing microservice cli
 
 ![Overview](https://github.com/user-attachments/assets/0666cc59-160e-441e-8f90-b7f2ab2a602a)
 
-# Step-by-Step Usage
+# Usage
 ## Step0. Requirements on Your Local Machine
 - AWS and Kubernetes credentials
 - Go
@@ -28,7 +28,7 @@ kubie ctx <your_context>
 Regardless of the tools you use, please ensure your credentials are set.
 
 ## Step3. Set Parameters
-Set the necessary parameters in `params.go`.
+Set the necessary parameters in `config/params.yaml`.
 
 At a minimum, you need to set the following parameters:
 
@@ -74,21 +74,41 @@ $ make run-delete
 ```
 
 # Parameters
-You can set these parameters in `app/prams/params.go`.
 
-| Parameter Name                | Description                               | default                        | required |
+| Parameter Name                | Description                               | Default                        | Required |
 |-------------------------------|-------------------------------------------|--------------------------------|----------|
-| MicroserviceName              | Name of microservice                      | ""                             | Yes      |
-| MicroserviceNamespace         | Namespace of microservice                 | ""                             | Yes      |
-| PrismMockSuffix               | Suffix for the mock service name          | "-prism-mock"                  | Yes      |
-| PrismPort                     | Port number for Prism                     | "80"                           | Yes      |
-| PrismCPU                      | CPU request for Prism                     | "1"                            | Yes      |
-| PrismMemory                   | Memory request for Prism                  | "1Gi"                          | Yes      |
-| IstioProxyCPU                 | CPU request of istio                      | "500m"                         | Yes      |
-| IstioProxyMemory              | Memory request for istio                  | "512Mi"                        | Yes      |
-| PriorityClassName             | Value of priorityClassName                | "high-priority"                | No       |
-| Timeout                       | Timeout for this tool                     | 10 * time.Minute               | Yes      |
-| EcrTagEnv                     | Value of the CostEnv tag of ECR           | "stg"                          | No       |
+| `microserviceName`           | Name of microservice                      | -                              | Yes      |
+| `microserviceNamespace`      | Namespace of microservice                 | -                              | Yes      |
+| `prismMockSuffix`           | Suffix for the mock service name          | `"-prism-mock"`                | Yes      |
+| `prismPort`                  | Port number for Prism                     | `80`                           | Yes      |
+| `prismCpu`                   | CPU request for Prism                     | `"500m"`                       | Yes      |
+| `prismMemory`                | Memory request for Prism                  | `"512Mi"`                      | Yes      |
+| `istioProxyCpu`             | CPU request for Istio                     | `"500m"`                       | Yes      |
+| `istioProxyMemory`          | Memory request for Istio                  | `"512Mi"`                      | Yes      |
+| `priorityClassName`         | Value of priorityClassName                | -                              | No       |
+| `timeout`                     | Timeout for this tool                     | `10m`                          | Yes      |
+| `ecrTags`                    | Pairs of ECR tag                          | -                              | No       |
+
+sample:
+
+```
+microserviceName: "pet-store"
+microserviceNamespace: "pet-store"
+prismMockSuffix: "-prism-mock"
+prismPort: 80
+prismCpu: "1"
+prismMemory: "1Gi"
+istioProxyCpu: "500m"
+istioProxyMemory: "512Mi"
+priorityClassName: "high-priority"
+timeout: "10m"
+ecrTags:
+  - key: "CostEnv"
+    value: "stg"
+  - key: "CostService"
+    value: "pet-store"
+
+```
 
 # Development
 ## Unit Test
@@ -99,4 +119,12 @@ Please install the following tools before running the test:
 
 ```
 $ make test
+```
+
+## Lint
+Please install `golangci-lint` before running the lint:
+https://golangci-lint.run/welcome/install/#local-installation
+
+```
+$ make lint
 ```
