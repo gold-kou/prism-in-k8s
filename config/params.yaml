@@ -1,9 +1,9 @@
-microservice_name: ""
-microservice_namespace: ""
-prism_mock_suffix: "-prism-mock"
-prism_port: 80
-prism_cpu: "500m"
-prism_memory: "512Mi"
-istio_proxy_cpu: "500m"
-istio_proxy_memory: "512Mi"
+microserviceName: ""
+microserviceNamespace: ""
+prismMockSuffix: "-prism-mock"
+prismPort: 80
+prismCpu: "500m"
+prismMemory: "512Mi"
+istioProxyCpu: "500m"
+istioProxyMemory: "512Mi"
 timeout: "10m"

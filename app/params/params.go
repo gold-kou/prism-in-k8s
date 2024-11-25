@@ -1,7 +1,6 @@
 package params
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"log"
@@ -38,17 +37,17 @@ var (
 )
 
 type Config struct {
-	MicroserviceName      string        `yaml:"microservice_name"`
-	MicroserviceNamespace string        `yaml:"microservice_namespace"`
-	PrismMockSuffix       string        `yaml:"prism_mock_suffix"`
-	PrismPort             int           `yaml:"prism_port"`
-	PrismCPU              string        `yaml:"prism_cpu"`
-	PrismMemory           string        `yaml:"prism_memory"`
-	IstioProxyCPU         string        `yaml:"istio_proxy_cpu"`
-	IstioProxyMemory      string        `yaml:"istio_proxy_memory"`
-	PriorityClassName     string        `yaml:"priority_class_name"`
+	MicroserviceName      string        `yaml:"microserviceName"`
+	MicroserviceNamespace string        `yaml:"microserviceNamespace"`
+	PrismMockSuffix       string        `yaml:"prismMockSuffix"`
+	PrismPort             int           `yaml:"prismPort"`
+	PrismCPU              string        `yaml:"prismCpu"`
+	PrismMemory           string        `yaml:"prismMemory"`
+	IstioProxyCPU         string        `yaml:"istioProxyCpu"`
+	IstioProxyMemory      string        `yaml:"istioProxyMemory"`
+	PriorityClassName     string        `yaml:"priorityClassName"`
 	Timeout               time.Duration `yaml:"timeout"`
-	EcrTags               []ECRTag      `yaml:"ecr_tags"`
+	EcrTags               []ECRTag      `yaml:"ecrTags"`
 }
 
 type ECRTag struct {

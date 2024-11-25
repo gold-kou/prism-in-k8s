@@ -39,6 +39,7 @@ kind-down:
 test: kind-up
 	@trap '$(MAKE) kind-down' EXIT; \
 	PARAMS_CONFIG_PATH=../../config/params.yaml $(GO) test ./... -v -shuffle=on -p 1
+	$(MAKE) lint
 
 test-ci: kind-up
 	PARAMS_CONFIG_PATH=../../config/params.yaml $(GO) test ./... -v -shuffle=on -p 1
