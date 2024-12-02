@@ -1,5 +1,5 @@
-microserviceName: ""
-microserviceNamespace: ""
+microserviceName: "petstore"
+microserviceNamespace: "petstore"
 prismMockSuffix: "-prism-mock"
 prismPort: 80
 prismCpu: "500m"
@@ -7,3 +7,20 @@ prismMemory: "512Mi"
 istioProxyCpu: "500m"
 istioProxyMemory: "512Mi"
 timeout: "10m"
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - matchExpressions:
+        - key: karpenter.sh/nodepool
+          operator: In
+          values:
+          - "platform-sre"
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchExpressions:
+        - key: app
+          operator: In
+          values:
+          - "api-gateway"
+      topologyKey: "kubernetes.io/hostname"

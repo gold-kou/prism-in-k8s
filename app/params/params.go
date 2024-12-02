@@ -9,6 +9,8 @@ import (
 
 	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -31,9 +33,10 @@ var (
 	IstioProxyCPU    string
 	IstioProxyMemory string
 	// others
-	PriorityClassName string
-	Timeout           time.Duration
-	EcrTags           []ECRTag
+	PriorityClassName  string
+	Timeout            time.Duration
+	EcrTags            []ECRTag
+	DeploymentAffinity *Affinity
 )
 
 type Config struct {
@@ -45,14 +48,71 @@ type Config struct {
 	PrismMemory           string        `yaml:"prismMemory"`
 	IstioProxyCPU         string        `yaml:"istioProxyCpu"`
 	IstioProxyMemory      string        `yaml:"istioProxyMemory"`
-	PriorityClassName     string        `yaml:"priorityClassName"`
+	PriorityClassName     string        `yaml:"priorityClassName,omitempty"`
 	Timeout               time.Duration `yaml:"timeout"`
-	EcrTags               []ECRTag      `yaml:"ecrTags"`
+	EcrTags               []ECRTag      `yaml:"ecrTags,omitempty"`
+	Affinity              *Affinity     `yaml:"affinity,omitempty"`
 }
 
 type ECRTag struct {
 	Key   string `yaml:"key"`
 	Value string `yaml:"value"`
+}
+
+type Affinity struct {
+	NodeAffinity    *NodeAffinity    `yaml:"nodeAffinity,omitempty"`
+	PodAffinity     *PodAffinity     `yaml:"podAffinity,omitempty"`
+	PodAntiAffinity *PodAntiAffinity `yaml:"podAntiAffinity,omitempty"`
+}
+
+type NodeAffinity struct {
+	RequiredDuringSchedulingIgnoredDuringExecution  []NodeSelectorTerm        `yaml:"requiredDuringSchedulingIgnoredDuringExecution,omitempty"`
+	PreferredDuringSchedulingIgnoredDuringExecution []PreferredSchedulingTerm `yaml:"preferredDuringSchedulingIgnoredDuringExecution,omitempty"`
+}
+
+type PodAffinity struct {
+	RequiredDuringSchedulingIgnoredDuringExecution  []PodAffinityTerm         `yaml:"requiredDuringSchedulingIgnoredDuringExecution,omitempty"`
+	PreferredDuringSchedulingIgnoredDuringExecution []WeightedPodAffinityTerm `yaml:"preferredDuringSchedulingIgnoredDuringExecution,omitempty"`
+}
+
+type PodAntiAffinity struct {
+	RequiredDuringSchedulingIgnoredDuringExecution  []PodAffinityTerm         `yaml:"requiredDuringSchedulingIgnoredDuringExecution,omitempty"`
+	PreferredDuringSchedulingIgnoredDuringExecution []WeightedPodAffinityTerm `yaml:"preferredDuringSchedulingIgnoredDuringExecution,omitempty"`
+}
+
+type NodeSelectorTerm struct {
+	MatchExpressions []NodeSelectorRequirement `yaml:"matchExpressions,omitempty"`
+}
+
+type NodeSelectorRequirement struct {
+	Key      string                      `yaml:"key"`
+	Operator corev1.NodeSelectorOperator `yaml:"operator"`
+	Values   []string                    `yaml:"values,omitempty"`
+}
+
+type PreferredSchedulingTerm struct {
+	Weight     int32            `yaml:"weight"`
+	Preference NodeSelectorTerm `yaml:"preference"`
+}
+
+type PodAffinityTerm struct {
+	LabelSelector *LabelSelector `yaml:"labelSelector,omitempty"`
+	TopologyKey   string         `yaml:"topologyKey"`
+}
+
+type WeightedPodAffinityTerm struct {
+	Weight          int32           `yaml:"weight"`
+	PodAffinityTerm PodAffinityTerm `yaml:"podAffinityTerm"`
+}
+
+type LabelSelector struct {
+	MatchExpressions []LabelSelectorRequirement `yaml:"matchExpressions,omitempty"`
+}
+
+type LabelSelectorRequirement struct {
+	Key      string                       `yaml:"key"`
+	Operator metav1.LabelSelectorOperator `yaml:"operator"`
+	Values   []string                     `yaml:"values,omitempty"`
 }
 
 func init() {
@@ -76,6 +136,9 @@ func init() {
 	PriorityClassName = config.PriorityClassName
 	Timeout = config.Timeout
 	EcrTags = config.EcrTags
+	fmt.Println("debug")
+	fmt.Println(config.Affinity)
+	DeploymentAffinity = config.Affinity
 }
 
 func LoadConfig(filename string) (*Config, error) {
@@ -93,14 +156,6 @@ func LoadConfig(filename string) (*Config, error) {
 
 	return &config, nil
 }
-
-// func LoadConfig(data []byte) (*Config, error) {
-// 	var config Config
-// 	if err := yaml.Unmarshal(data, &config); err != nil {
-// 		return nil, fmt.Errorf("failed to decode config data: %w", err)
-// 	}
-// 	return &config, nil
-// }
 
 func ValidateParams() error {
 	params := map[string]interface{}{

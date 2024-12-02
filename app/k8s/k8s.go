@@ -156,6 +156,12 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 			},
 		},
 	}
+	// Affinity
+	fmt.Println(*params.DeploymentAffinity)
+	if params.DeploymentAffinity != nil {
+		deployment.Spec.Template.Spec.Affinity = makeAffinityParams(params.DeploymentAffinity)
+	}
+
 	_, err := k8sClientSet.AppsV1().Deployments(namespaceName).Create(ctx, deployment, metav1.CreateOptions{})
 	if err != nil {
 		if !errors.IsAlreadyExists(err) {
@@ -167,6 +173,258 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 	}
 	return nil
 }
+
+func makeAffinityParams(affinity *params.Affinity) *corev1.Affinity {
+	if affinity == nil {
+		return nil
+	}
+
+	return &corev1.Affinity{
+		NodeAffinity:    makeNodeAffinity(affinity.NodeAffinity),
+		PodAffinity:     makePodAffinity(affinity.PodAffinity),
+		PodAntiAffinity: makePodAntiAffinity(affinity.PodAntiAffinity),
+	}
+}
+
+func makeNodeAffinity(nodeAffinity *params.NodeAffinity) *corev1.NodeAffinity {
+	if nodeAffinity == nil {
+		return nil
+	}
+
+	return &corev1.NodeAffinity{
+		RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+			NodeSelectorTerms: makeNodeSelectorTerms(nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution),
+		},
+		PreferredDuringSchedulingIgnoredDuringExecution: makePreferredSchedulingTerms(nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution),
+	}
+}
+
+func makePodAffinity(podAffinity *params.PodAffinity) *corev1.PodAffinity {
+	if podAffinity == nil {
+		return nil
+	}
+
+	return &corev1.PodAffinity{
+		RequiredDuringSchedulingIgnoredDuringExecution:  makePodAffinityTerms(podAffinity.RequiredDuringSchedulingIgnoredDuringExecution),
+		PreferredDuringSchedulingIgnoredDuringExecution: makeWeightedPodAffinityTerms(podAffinity.PreferredDuringSchedulingIgnoredDuringExecution),
+	}
+}
+
+func makePodAntiAffinity(podAntiAffinity *params.PodAntiAffinity) *corev1.PodAntiAffinity {
+	if podAntiAffinity == nil {
+		return nil
+	}
+
+	return &corev1.PodAntiAffinity{
+		RequiredDuringSchedulingIgnoredDuringExecution:  makePodAffinityTerms(podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution),
+		PreferredDuringSchedulingIgnoredDuringExecution: makeWeightedPodAffinityTerms(podAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution),
+	}
+}
+
+func makeNodeSelectorTerms(terms []params.NodeSelectorTerm) []corev1.NodeSelectorTerm {
+	var result []corev1.NodeSelectorTerm
+	for _, term := range terms {
+		result = append(result, corev1.NodeSelectorTerm{
+			MatchExpressions: makeNodeSelectorRequirements(term.MatchExpressions),
+		})
+	}
+	return result
+}
+
+func makePreferredSchedulingTerms(terms []params.PreferredSchedulingTerm) []corev1.PreferredSchedulingTerm {
+	var result []corev1.PreferredSchedulingTerm
+	for _, term := range terms {
+		result = append(result, corev1.PreferredSchedulingTerm{
+			Weight: term.Weight,
+			Preference: corev1.NodeSelectorTerm{
+				MatchExpressions: makeNodeSelectorRequirements(term.Preference.MatchExpressions),
+			},
+		})
+	}
+	return result
+}
+
+func makePodAffinityTerms(terms []params.PodAffinityTerm) []corev1.PodAffinityTerm {
+	var result []corev1.PodAffinityTerm
+	for _, term := range terms {
+		result = append(result, corev1.PodAffinityTerm{
+			LabelSelector: makeLabelSelector(term.LabelSelector),
+			TopologyKey:   term.TopologyKey,
+		})
+	}
+	return result
+}
+
+func makeWeightedPodAffinityTerms(terms []params.WeightedPodAffinityTerm) []corev1.WeightedPodAffinityTerm {
+	var result []corev1.WeightedPodAffinityTerm
+	for _, term := range terms {
+		result = append(result, corev1.WeightedPodAffinityTerm{
+			Weight: term.Weight,
+			PodAffinityTerm: corev1.PodAffinityTerm{
+				LabelSelector: makeLabelSelector(term.PodAffinityTerm.LabelSelector),
+				TopologyKey:   term.PodAffinityTerm.TopologyKey,
+			},
+		})
+	}
+	return result
+}
+
+func makeNodeSelectorRequirements(reqs []params.NodeSelectorRequirement) []corev1.NodeSelectorRequirement {
+	var result []corev1.NodeSelectorRequirement
+	for _, req := range reqs {
+		result = append(result, corev1.NodeSelectorRequirement{
+			Key:      req.Key,
+			Operator: corev1.NodeSelectorOperator(req.Operator),
+			Values:   req.Values,
+		})
+	}
+	return result
+}
+
+func makeLabelSelector(selector *params.LabelSelector) *metav1.LabelSelector {
+	if selector == nil {
+		return nil
+	}
+	return &metav1.LabelSelector{
+		MatchExpressions: makeLabelSelectorRequirements(selector.MatchExpressions),
+	}
+}
+
+func makeLabelSelectorRequirements(reqs []params.LabelSelectorRequirement) []metav1.LabelSelectorRequirement {
+	var result []metav1.LabelSelectorRequirement
+	for _, req := range reqs {
+		result = append(result, metav1.LabelSelectorRequirement{
+			Key:      req.Key,
+			Operator: metav1.LabelSelectorOperator(req.Operator),
+			Values:   req.Values,
+		})
+	}
+	return result
+}
+
+// func makeAffinityParams(p params.Affinity) *corev1.Affinity {
+// 	affinity := &corev1.Affinity{}
+// 	if p.NodeAffinity != nil {
+// 		nodeAffinity := &corev1.NodeAffinity{}
+// 		if p.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+// 			requiredDuringScgedulingIgnoredDuringExecution := &corev1.NodeSelector{
+// 				NodeSelectorTerms: []corev1.NodeSelectorTerm{
+// 					{
+// 						MatchExpressions: []corev1.NodeSelectorRequirement{
+// 							{
+// 								Key:      p.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MatchExpressions[0].Key,
+// 								Operator: p.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MatchExpressions[0].Operator,
+// 								Values:   p.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].MatchExpressions[0].Values,
+// 							},
+// 						},
+// 					},
+// 				},
+// 			}
+// 			nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = requiredDuringScgedulingIgnoredDuringExecution
+// 		}
+// 		if p.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution != nil {
+// 			preferredDuringSchedulingIgnoredDuringExecution := []corev1.PreferredSchedulingTerm{
+// 				{
+// 					Weight: p.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Weight,
+// 					Preference: corev1.NodeSelectorTerm{
+// 						MatchExpressions: []corev1.NodeSelectorRequirement{
+// 							{
+// 								Key:      p.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Key,
+// 								Operator: p.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Operator,
+// 								Values:   p.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Preference.MatchExpressions[0].Values,
+// 							},
+// 						},
+// 					},
+// 				},
+// 			}
+// 			nodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution = preferredDuringSchedulingIgnoredDuringExecution
+// 		}
+// 		affinity.NodeAffinity = nodeAffinity
+// 	}
+// 	if p.PodAffinity != nil {
+// 		podAffinity := &corev1.PodAffinity{}
+// 		if p.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+// 			requiredDuringSchedulingIgnoredDuringExecution := []corev1.PodAffinityTerm{
+// 				{
+// 					LabelSelector: &metav1.LabelSelector{
+// 						MatchExpressions: []metav1.LabelSelectorRequirement{
+// 							{
+// 								Key:      p.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Key,
+// 								Operator: p.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Operator,
+// 								Values:   p.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Values,
+// 							},
+// 						},
+// 					},
+// 					TopologyKey: p.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].TopologyKey,
+// 				},
+// 			}
+// 			podAffinity.RequiredDuringSchedulingIgnoredDuringExecution = requiredDuringSchedulingIgnoredDuringExecution
+// 		}
+// 		if p.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution != nil {
+// 			preferredDuringSchedulingIgnoredDuringExecution := []corev1.WeightedPodAffinityTerm{
+// 				{
+// 					Weight: p.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Weight,
+// 					PodAffinityTerm: corev1.PodAffinityTerm{
+// 						LabelSelector: &metav1.LabelSelector{
+// 							MatchExpressions: []metav1.LabelSelectorRequirement{
+// 								{
+// 									Key:      p.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Key,
+// 									Operator: p.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Operator,
+// 									Values:   p.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Values,
+// 								},
+// 							},
+// 						},
+// 						TopologyKey: p.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.TopologyKey,
+// 					},
+// 				},
+// 			}
+// 			podAffinity.PreferredDuringSchedulingIgnoredDuringExecution = preferredDuringSchedulingIgnoredDuringExecution
+// 		}
+// 		affinity.PodAffinity = podAffinity
+// 	}
+// 	if p.PodAntiAffinity != nil {
+// 		podAntiAffinity := &corev1.PodAntiAffinity{}
+// 		if p.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+// 			requiredDuringSchedulingIgnoredDuringExecution := []corev1.PodAffinityTerm{
+// 				{
+// 					LabelSelector: &metav1.LabelSelector{
+// 						MatchExpressions: []metav1.LabelSelectorRequirement{
+// 							{
+// 								Key:      p.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Key,
+// 								Operator: p.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Operator,
+// 								Values:   p.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].LabelSelector.MatchExpressions[0].Values,
+// 							},
+// 						},
+// 					},
+// 					TopologyKey: p.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0].TopologyKey,
+// 				},
+// 			}
+// 			podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution = requiredDuringSchedulingIgnoredDuringExecution
+// 		}
+// 		if p.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution != nil {
+// 			preferredDuringSchedulingIgnoredDuringExecution := []corev1.WeightedPodAffinityTerm{
+// 				{
+// 					Weight: p.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Weight,
+// 					PodAffinityTerm: corev1.PodAffinityTerm{
+// 						LabelSelector: &metav1.LabelSelector{
+// 							MatchExpressions: []metav1.LabelSelectorRequirement{
+// 								{
+// 									Key:      p.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Key,
+// 									Operator: p.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Operator,
+// 									Values:   p.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.LabelSelector.MatchExpressions[0].Values,
+// 								},
+// 							},
+// 						},
+// 						TopologyKey: p.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].PodAffinityTerm.TopologyKey,
+// 					},
+// 				},
+// 			}
+// 			podAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution = preferredDuringSchedulingIgnoredDuringExecution
+// 		}
+// 		affinity.PodAntiAffinity = podAntiAffinity
+// 	}
+// 	return affinity
+// }
 
 func createService(ctx context.Context, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string) error {
 	service := &corev1.Service{
