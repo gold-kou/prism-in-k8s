@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"log"
-	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -36,17 +35,8 @@ func init() {
 	flag.BoolVar(&isTest, "test", false, "set to true if running in test mode")
 	flag.Parse()
 
-	// empty check for openapi.yaml
-	data, err := os.ReadFile("openapi.yaml")
-	if err != nil {
-		panic(err)
-	}
-	if len(data) == 0 {
-		panic("openapi.yaml is empty")
-	}
-
 	// validation parameters
-	err = params.ValidateParams()
+	err := params.ValidateParams()
 	if err != nil {
 		panic(err)
 	}

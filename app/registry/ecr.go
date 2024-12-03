@@ -28,7 +28,7 @@ var (
 func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, resourceName string) error {
 	// build Docker image
 	imageTag := params.MicroserviceName + ":latest"
-	cmd := exec.Command("docker", "build", "-f", "Dockerfile.prism", "-t", imageTag, ".")
+	cmd := exec.Command("docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.prism", "-t", imageTag, ".")
 	if err := cmd.Run(); err != nil {
 		return xerrors.Errorf("%s: %v", errFailedToBuildDockerImage, err)
 	}

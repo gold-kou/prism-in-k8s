@@ -1,3 +1,6 @@
 FROM stoplight/prism:5.8.2
-COPY ./openapi.yaml /app/openapi.yaml
+COPY ./app/openapi.yaml /app/openapi.yaml
+COPY ./app/openapi-sample.yaml /app/openapi-sample.yaml
+COPY ./app/empty_check_and_copy.sh /app/empty_check_and_copy.sh
+RUN chmod +x /app/empty_check_and_copy.sh && /app/empty_check_and_copy.sh
 CMD ["mock", "-h", "0.0.0.0", "-p", "80", "/app/openapi.yaml"]

@@ -15,7 +15,7 @@ This should be especially useful for load testing or developing microservice cli
 - Docker
 
 ## Step1. OpenAPI
-Copy and paste your OpenAPI definition into `openapi.yaml`.
+Copy and paste your OpenAPI definition into `app/openapi.yaml`.
 
 ## Step2. Credentials
 In my case, I use [awsp](https://github.com/johnnyopao/awsp) and [kubie](https://github.com/sbstp/kubie).
