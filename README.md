@@ -32,9 +32,9 @@ Set the necessary parameters in `config/params.yaml`.
 
 At a minimum, you need to set the following parameters:
 
-- MicroserviceName
+- microserviceName
   - Your microservice name
-- MicroserviceNamespace
+- microserviceNamespace
   - Your microservice namespace
 
 ## Step4. Create Mock Resources
@@ -77,8 +77,8 @@ $ make run-delete
 
 | Parameter Name                | Description                               | Default                        | Required |
 |-------------------------------|-------------------------------------------|--------------------------------|----------|
-| `microserviceName`            | Name of microservice                      | -                              | Yes      |
-| `microserviceNamespace`       | Namespace of microservice                 | -                              | Yes      |
+| `microserviceName`            | Name of microservice                      | `sample`                       | Yes      |
+| `microserviceNamespace`       | Namespace of microservice                 | `sample`                       | Yes      |
 | `prismMockSuffix`             | Suffix for the mock service name          | `"-prism-mock"`                | Yes      |
 | `timeout`                     | Timeout for this tool                     | `10m`                          | No       |
 | `prismPort`                   | Port number for Prism                     | `80`                           | No       |
@@ -93,8 +93,8 @@ $ make run-delete
 sample:
 
 ```
-microserviceName: "pet-store"
-microserviceNamespace: "pet-store"
+microserviceName: "sample"
+microserviceNamespace: "sample"
 prismMockSuffix: "-prism-mock"
 istioMode: false
 priorityClassName: "high-priority"
