@@ -11,6 +11,16 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	defaultTimeout          = 10 * time.Minute
+	defaultPrismPort        = 80
+	defaultPrismCPU         = "500m"
+	defaultPrismMemory      = "512Mi"
+	defaultIstioMode        = true
+	defaultIstioProxyCPU    = "500m"
+	defaultIstioProxyMemory = "512Mi"
+)
+
 var (
 	errEmptyParameter           = errors.New("empty parameter found")
 	errUnsupportedParameterType = errors.New("unsupported parameter type")
@@ -19,20 +29,19 @@ var (
 )
 
 var (
-	// name
+	// required parameters
 	MicroserviceName      string
 	MicroserviceNamespace string
 	PrismMockSuffix       string
-	// prism container
-	PrismPort   int
-	PrismCPU    string
-	PrismMemory string
-	// istio container
-	IstioProxyCPU    string
-	IstioProxyMemory string
-	// others
-	PriorityClassName string
+	// optional parameters
 	Timeout           time.Duration
+	PrismPort         int
+	PrismCPU          string
+	PrismMemory       string
+	IstioMode         bool
+	IstioProxyCPU     string
+	IstioProxyMemory  string
+	PriorityClassName string
 	EcrTags           []ECRTag
 )
 
@@ -40,13 +49,14 @@ type Config struct {
 	MicroserviceName      string        `yaml:"microserviceName"`
 	MicroserviceNamespace string        `yaml:"microserviceNamespace"`
 	PrismMockSuffix       string        `yaml:"prismMockSuffix"`
+	Timeout               time.Duration `yaml:"timeout"`
 	PrismPort             int           `yaml:"prismPort"`
 	PrismCPU              string        `yaml:"prismCpu"`
 	PrismMemory           string        `yaml:"prismMemory"`
+	IstioMode             bool          `yaml:"istioMode"`
 	IstioProxyCPU         string        `yaml:"istioProxyCpu"`
 	IstioProxyMemory      string        `yaml:"istioProxyMemory"`
 	PriorityClassName     string        `yaml:"priorityClassName"`
-	Timeout               time.Duration `yaml:"timeout"`
 	EcrTags               []ECRTag      `yaml:"ecrTags"`
 }
 
@@ -65,16 +75,41 @@ func init() {
 		log.Fatalf("Error loading config: %v", err)
 	}
 
+	// required parameters
 	MicroserviceName = config.MicroserviceName
 	MicroserviceNamespace = config.MicroserviceNamespace
 	PrismMockSuffix = config.PrismMockSuffix
-	PrismPort = config.PrismPort
-	PrismCPU = config.PrismCPU
-	PrismMemory = config.PrismMemory
-	IstioProxyCPU = config.IstioProxyCPU
-	IstioProxyMemory = config.IstioProxyMemory
+
+	// optional parameters
+	Timeout = defaultTimeout
+	if config.Timeout != 0 {
+		Timeout = config.Timeout
+	}
+	PrismPort = defaultPrismPort
+	if config.PrismPort != 0 {
+		PrismPort = config.PrismPort
+	}
+	PrismCPU = defaultPrismCPU
+	if config.PrismCPU != "" {
+		PrismCPU = config.PrismCPU
+	}
+	PrismMemory = defaultPrismMemory
+	if config.PrismMemory != "" {
+		PrismMemory = config.PrismMemory
+	}
+	IstioMode = false
+	if config.IstioMode {
+		IstioMode = config.IstioMode
+	}
+	IstioProxyCPU = defaultIstioProxyCPU
+	if config.IstioProxyCPU != "" {
+		IstioProxyCPU = config.IstioProxyCPU
+	}
+	IstioProxyMemory = defaultIstioProxyMemory
+	if config.IstioProxyMemory != "" {
+		IstioProxyMemory = config.IstioProxyMemory
+	}
 	PriorityClassName = config.PriorityClassName
-	Timeout = config.Timeout
 	EcrTags = config.EcrTags
 }
 
@@ -94,25 +129,17 @@ func LoadConfig(filename string) (*Config, error) {
 	return &config, nil
 }
 
-// func LoadConfig(data []byte) (*Config, error) {
-// 	var config Config
-// 	if err := yaml.Unmarshal(data, &config); err != nil {
-// 		return nil, fmt.Errorf("failed to decode config data: %w", err)
-// 	}
-// 	return &config, nil
-// }
-
 func ValidateParams() error {
 	params := map[string]interface{}{
 		"microserviceName":      MicroserviceName,
 		"microserviceNamespace": MicroserviceNamespace,
 		"prismMockSuffix":       PrismMockSuffix,
+		"timeout":               Timeout,
 		"prismPort":             PrismPort,
 		"prismCPU":              PrismCPU,
 		"prismMemory":           PrismMemory,
 		"istioProxyCPU":         IstioProxyCPU,
 		"istioProxyMemory":      IstioProxyMemory,
-		"timeout":               Timeout,
 	}
 
 	for name, value := range params {

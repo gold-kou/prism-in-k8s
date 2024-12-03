@@ -1,9 +1,3 @@
 microserviceName: ""
 microserviceNamespace: ""
 prismMockSuffix: "-prism-mock"
-prismPort: 80
-prismCpu: "500m"
-prismMemory: "512Mi"
-istioProxyCpu: "500m"
-istioProxyMemory: "512Mi"
-timeout: "10m"

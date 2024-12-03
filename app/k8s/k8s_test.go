@@ -28,7 +28,7 @@ func TestCreateK8sResources(t *testing.T) {
 	require.NoError(t, err)
 
 	// test target
-	err = k8s.CreateK8sResources(ctx, dummyAWSAccountID, awsConfig, kubeconfig, testNamespaceName, testResourceName, true)
+	err = k8s.CreateK8sResources(ctx, dummyAWSAccountID, awsConfig, kubeconfig, testNamespaceName, testResourceName, true, true)
 	require.NoError(t, err)
 
 	// verify

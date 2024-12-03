@@ -39,18 +39,18 @@ var (
 	errFailedToGetLatestVersion = errors.New("failed to get latest version")
 )
 
-func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istTest bool) error {
+func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, istTest bool) error {
 	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToCreateClientSet, err)
 	}
 
-	err = createNamespace(ctx, k8sClientSet, namespaceName)
+	err = createNamespace(ctx, k8sClientSet, namespaceName, istioMode)
 	if err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToCreateNameSpace, err)
 	}
 
-	err = crateDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, istTest)
+	err = crateDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, istioMode, istTest)
 	if err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToCreateDeployment, err)
 	}
@@ -63,33 +63,35 @@ func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.
 	return nil
 }
 
-func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, namespaceName string) error {
-	// get the latest istio version from istiod pod considering during upgrade, if not found return empty podList
-	podList, err := k8sClientSet.CoreV1().Pods("istio-system").List(ctx, metav1.ListOptions{
-		LabelSelector: "app=istiod",
-	})
-	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToListPods, err)
-	}
-	hyphenedVersions := []string{}
-	for _, item := range podList.Items {
-		hyphenedVersions = append(hyphenedVersions, item.ObjectMeta.Labels["istio.io/rev"])
-	}
-	latestVersion := getLatestVersion(hyphenedVersions)
-	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToGetLatestVersion, err)
-	}
-
+func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, namespaceName string, istioMode bool) error {
 	// Namespace
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: namespaceName,
-			Labels: map[string]string{
-				"istio.io/rev": latestVersion,
-			},
+			Name:   namespaceName,
+			Labels: map[string]string{},
 		},
 	}
-	_, err = k8sClientSet.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
+
+	// get the latest istio version from istiod pod considering during upgrade, if not found return empty podList
+	if istioMode {
+		podList, err := k8sClientSet.CoreV1().Pods("istio-system").List(ctx, metav1.ListOptions{
+			LabelSelector: "app=istiod",
+		})
+		if err != nil {
+			return xerrors.Errorf("%w: %w", errFailedToListPods, err)
+		}
+		hyphenedVersions := []string{}
+		for _, item := range podList.Items {
+			hyphenedVersions = append(hyphenedVersions, item.ObjectMeta.Labels["istio.io/rev"])
+		}
+		latestVersion := getLatestVersion(hyphenedVersions)
+		if err != nil {
+			return xerrors.Errorf("%w: %w", errFailedToGetLatestVersion, err)
+		}
+		namespace.ObjectMeta.Labels["istio.io/rev"] = latestVersion
+	}
+
+	_, err := k8sClientSet.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 	if err != nil {
 		if !errors.IsAlreadyExists(err) {
 			return xerrors.Errorf("%w: %w", errFailedToCreateNameSpace, err)
@@ -101,7 +103,7 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 	return nil
 }
 
-func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Config, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string, isTest bool) error {
+func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Config, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string, istioMode, isTest bool) error {
 	// Prism image
 	prismImage := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s", awsAccountID, awsConfig.Region, resourceName)
 	if isTest {
@@ -125,13 +127,7 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 					Labels: map[string]string{
 						"app": resourceName,
 					},
-					Annotations: map[string]string{
-						"sidecar.istio.io/inject":                          "true",
-						"sidecar.istio.io/proxyCPULimit":                   params.IstioProxyCPU,
-						"sidecar.istio.io/proxyMemoryLimit":                params.IstioProxyMemory,
-						"traffic.sidecar.istio.io/includeOutboundIPRanges": "*",
-						"proxy.istio.io/config":                            `{ "terminationDrainDuration": "30s" }`,
-					},
+					Annotations: map[string]string{},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -156,6 +152,15 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 			},
 		},
 	}
+
+	if istioMode {
+		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/inject"] = "true"
+		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/proxyCPULimit"] = params.IstioProxyCPU
+		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/proxyMemoryLimit"] = params.IstioProxyMemory
+		deployment.Spec.Template.ObjectMeta.Annotations["traffic.sidecar.istio.io/includeOutboundIPRanges"] = "*"
+		deployment.Spec.Template.ObjectMeta.Annotations["proxy.istio.io/config"] = `{ "terminationDrainDuration": "30s" }`
+	}
+
 	_, err := k8sClientSet.AppsV1().Deployments(namespaceName).Create(ctx, deployment, metav1.CreateOptions{})
 	if err != nil {
 		if !errors.IsAlreadyExists(err) {

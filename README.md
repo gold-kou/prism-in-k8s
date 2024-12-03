@@ -77,17 +77,18 @@ $ make run-delete
 
 | Parameter Name                | Description                               | Default                        | Required |
 |-------------------------------|-------------------------------------------|--------------------------------|----------|
-| `microserviceName`           | Name of microservice                      | -                              | Yes      |
-| `microserviceNamespace`      | Namespace of microservice                 | -                              | Yes      |
-| `prismMockSuffix`           | Suffix for the mock service name          | `"-prism-mock"`                | Yes      |
-| `prismPort`                  | Port number for Prism                     | `80`                           | Yes      |
-| `prismCpu`                   | CPU request for Prism                     | `"500m"`                       | Yes      |
-| `prismMemory`                | Memory request for Prism                  | `"512Mi"`                      | Yes      |
-| `istioProxyCpu`             | CPU request for Istio                     | `"500m"`                       | Yes      |
-| `istioProxyMemory`          | Memory request for Istio                  | `"512Mi"`                      | Yes      |
-| `priorityClassName`         | Value of priorityClassName                | -                              | No       |
-| `timeout`                     | Timeout for this tool                     | `10m`                          | Yes      |
-| `ecrTags`                    | Pairs of ECR tag                          | -                              | No       |
+| `microserviceName`            | Name of microservice                      | -                              | Yes      |
+| `microserviceNamespace`       | Namespace of microservice                 | -                              | Yes      |
+| `prismMockSuffix`             | Suffix for the mock service name          | `"-prism-mock"`                | Yes      |
+| `timeout`                     | Timeout for this tool                     | `10m`                          | No       |
+| `prismPort`                   | Port number for Prism                     | `80`                           | No       |
+| `prismCpu`                    | CPU request for Prism                     | `"500m"`                       | No       |
+| `prismMemory`                 | Memory request for Prism                  | `"512Mi"`                      | No       |
+| `istioMode`                   | Whether to use istio                      | `true`                         | No       |
+| `istioProxyCpu`               | CPU request for Istio                     | `"500m"`                       | No       |
+| `istioProxyMemory`            | Memory request for Istio                  | `"512Mi"`                      | No       |
+| `priorityClassName`           | Value of priorityClassName                | -                              | No       |
+| `ecrTags`                     | Pairs of ECR tag                          | -                              | No       |
 
 sample:
 
@@ -95,19 +96,13 @@ sample:
 microserviceName: "pet-store"
 microserviceNamespace: "pet-store"
 prismMockSuffix: "-prism-mock"
-prismPort: 80
-prismCpu: "1"
-prismMemory: "1Gi"
-istioProxyCpu: "500m"
-istioProxyMemory: "512Mi"
+istioMode: false
 priorityClassName: "high-priority"
-timeout: "10m"
 ecrTags:
   - key: "CostEnv"
     value: "stg"
   - key: "CostService"
     value: "pet-store"
-
 ```
 
 # Development
