@@ -41,19 +41,21 @@ func init() {
 		panic(err)
 	}
 
-	// AWS config
-	awsConfig, err = config.LoadDefaultConfig(context.Background())
-	if err != nil {
-		panic(xerrors.Errorf("failed load AWS config: %v", err))
-	}
+	if !isTest {
+		// AWS config
+		awsConfig, err = config.LoadDefaultConfig(context.Background())
+		if err != nil {
+			panic(xerrors.Errorf("failed load AWS config: %v", err))
+		}
 
-	// get AWS account ID
-	stsClient := sts.NewFromConfig(awsConfig)
-	result, err := stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
-	if err != nil {
-		panic(xerrors.Errorf("failed to get caller identity: %v", err))
+		// get AWS account ID
+		stsClient := sts.NewFromConfig(awsConfig)
+		result, err := stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
+		if err != nil {
+			panic(xerrors.Errorf("failed to get caller identity: %v", err))
+		}
+		awsAccountID = *result.Account
 	}
-	awsAccountID = *result.Account
 
 	// kube config
 	kubeconfigPath := clientcmd.NewDefaultPathOptions().GetDefaultFilename()
@@ -76,12 +78,14 @@ func Run() {
 	defer cancel()
 
 	if isCreate {
-		err := registry.BuildAndPushECR(ctx, awsConfig, awsAccountID, resourceName)
-		if err != nil {
-			panic(err)
+		if !isTest {
+			err := registry.BuildAndPushECR(ctx, awsConfig, awsAccountID, resourceName)
+			if err != nil {
+				panic(err)
+			}
 		}
 
-		err = k8s.CreateK8sResources(ctx, awsAccountID, awsConfig, kubeConfig, resourceName, namespaceName, params.IstioMode, isTest)
+		err := k8s.CreateK8sResources(ctx, awsAccountID, awsConfig, kubeConfig, resourceName, namespaceName, params.IstioMode, isTest)
 		if err != nil {
 			panic(err)
 		}

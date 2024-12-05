@@ -38,6 +38,8 @@ func TestCreateK8sResources(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = k8sClientSet.AppsV1().Deployments(testNamespaceName).Get(ctx, testResourceName, metav1.GetOptions{})
 	assert.NoError(t, err)
+	err = testutil.WaitForPodRunning(ctx, k8sClientSet, testNamespaceName, testResourceName)
+	require.NoError(t, err)
 	_, err = k8sClientSet.CoreV1().Services(testNamespaceName).Get(ctx, testResourceName, metav1.GetOptions{})
 	assert.NoError(t, err)
 

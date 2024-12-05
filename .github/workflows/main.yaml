@@ -13,8 +13,8 @@ permissions:
   contents: read # for actions/checkout
 
 jobs:
-  setup-and-test:
-    name: Setup Test Cluster and Execute Test
+  setup-and-test-e2e:
+    name: Setup Test Cluster and Execute End-to-End Test
     runs-on: ubuntu-latest
     steps:
       - name: Install kubectl
@@ -26,7 +26,6 @@ jobs:
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
 
-      # to avoid to be overwritten by actions/checkout, move to /usr/local
       - name: Install istioctl
         run: |
           curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.24.0 sh -
@@ -40,15 +39,46 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Run tests
+      - name: Run end-to-end test
         run: |
-          make test-ci
+          make test-e2e
+
+  setup-and-test-go:
+    name: Setup Test Cluster and Execute Go Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.25.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Install istioctl
+        run: |
+          curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.24.0 sh -
+          sudo mv istio-1.24.0/bin/istioctl /usr/local/bin
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Run go tests
+        run: |
+          make test-go
 
   golangci:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out code
+        uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
