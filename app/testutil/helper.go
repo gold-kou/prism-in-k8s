@@ -2,6 +2,8 @@ package testutil
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/gold-kou/prism-in-k8s/app/params"
 	"github.com/gold-kou/prism-in-k8s/app/util"
@@ -17,6 +19,8 @@ import (
 )
 
 const servicePort = 80
+
+var errNotRunning = errors.New("pod did not reach Running state")
 
 func CreateNamespace(ctx context.Context, clientset *kubernetes.Clientset, namespace string) error {
 	n := &corev1.Namespace{
@@ -60,7 +64,7 @@ func CreateDeployment(ctx context.Context, clientset *kubernetes.Clientset, name
 					Containers: []corev1.Container{
 						{
 							Name:  name,
-							Image: "my-local-image:latest",
+							Image: "my-local-image:v1",
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: int32(params.PrismPort),
@@ -163,4 +167,23 @@ func DeleteService(ctx context.Context, clientset *kubernetes.Clientset, namespa
 		return err
 	}
 	return nil
+}
+
+func WaitForPodRunning(ctx context.Context, clientset *kubernetes.Clientset, namespace, resourceName string) error {
+	label := "app=" + resourceName
+	for range 30 {
+		pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: label,
+		})
+		if err != nil {
+			return err
+		}
+		if len(pods.Items) > 0 {
+			if pods.Items[0].Status.Phase == corev1.PodRunning {
+				return nil
+			}
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return errNotRunning
 }

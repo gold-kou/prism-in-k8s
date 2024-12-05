@@ -105,16 +105,34 @@ ecrTags:
     value: "pet-store"
 ```
 
-# Development
-## Unit Test
+# For developers
+## Testing
 Please install the following tools before running the test:
 
 - kind
 - istio-ctl
 
+### Unit tests
 ```
-$ make test
+$ make test-go
 ```
+
+This make target runs the go unit tests.
+
+### End-to-end tests
+```
+$ make test-e2e
+```
+
+This make target does the following:
+
+1. Setup kind cluster
+2. Boot mock resources on the cluster
+3. Boot curl pod on the cluster
+4. Execute curl command from the curl pod to the mock service
+5. Check the response
+
+This takes a few minutes to wait resources to be ready.
 
 ## Lint
 Please install `golangci-lint` before running the lint:

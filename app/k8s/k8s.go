@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	localPrismImage = "my-local-image:latest"
+	localPrismImage = "my-local-image:v1"
 	servicePort     = 80
 )
 
@@ -39,7 +39,7 @@ var (
 	errFailedToGetLatestVersion = errors.New("failed to get latest version")
 )
 
-func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, istTest bool) error {
+func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, isTest bool) error {
 	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToCreateClientSet, err)
@@ -50,7 +50,7 @@ func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.
 		return xerrors.Errorf("%w: %w", errFailedToCreateNameSpace, err)
 	}
 
-	err = crateDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, istioMode, istTest)
+	err = crateDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, istioMode, isTest)
 	if err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToCreateDeployment, err)
 	}
@@ -151,6 +151,11 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 				},
 			},
 		},
+	}
+
+	if isTest {
+		// to get image from local
+		deployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullNever
 	}
 
 	if istioMode {
