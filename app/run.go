@@ -85,13 +85,13 @@ func Run() {
 			}
 		}
 
-		err := k8s.CreateK8sResources(ctx, awsAccountID, awsConfig, kubeConfig, resourceName, namespaceName, params.IstioMode, isTest)
+		err := k8s.CreateK8sResources(ctx, awsAccountID, awsConfig, kubeConfig, namespaceName, resourceName, params.IstioMode, isTest)
 		if err != nil {
 			panic(err)
 		}
 
 		if params.IstioMode {
-			err = istio.CreateIstioResources(ctx, kubeConfig, resourceName, namespaceName)
+			err = istio.CreateIstioResources(ctx, kubeConfig, namespaceName, resourceName)
 			if err != nil {
 				panic(err)
 			}
@@ -99,13 +99,13 @@ func Run() {
 		log.Println("[INFO] All resources for prism mock are created successfully")
 	} else if isDelete {
 		if params.IstioMode {
-			err := istio.DeleteIstioResources(ctx, kubeConfig, resourceName, namespaceName)
+			err := istio.DeleteIstioResources(ctx, kubeConfig, namespaceName, resourceName)
 			if err != nil {
 				panic(err)
 			}
 		}
 
-		err := k8s.DeleteK8sResources(ctx, kubeConfig, resourceName, namespaceName)
+		err := k8s.DeleteK8sResources(ctx, kubeConfig, namespaceName, resourceName)
 		if err != nil {
 			panic(err)
 		}
