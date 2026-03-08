@@ -10,9 +10,9 @@ This should be especially useful for load testing or developing microservice cli
 # Usage
 ## Step0. Requirements on Your Local Machine
 - AWS and Kubernetes credentials
-- Go
-- kubectl
-- Docker
+- [Go](https://go.dev/doc/install)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [Docker](https://docs.docker.com/get-docker/)
 
 ## Step1. OpenAPI
 Copy and paste your OpenAPI definition into `app/openapi.yaml`.
@@ -109,8 +109,8 @@ ecrTags:
 ## Testing
 Please install the following tools before running the test:
 
-- kind
-- istio-ctl
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
+- [istioctl](https://istio.io/latest/docs/setup/getting-started/#download)
 
 ### Unit tests
 ```
