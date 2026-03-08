@@ -157,7 +157,6 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 		},
 	}
 	// Affinity
-	fmt.Println(*params.DeploymentAffinity)
 	if params.DeploymentAffinity != nil {
 		deployment.Spec.Template.Spec.Affinity = makeAffinityParams(params.DeploymentAffinity)
 	}

@@ -136,8 +136,6 @@ func init() {
 	PriorityClassName = config.PriorityClassName
 	Timeout = config.Timeout
 	EcrTags = config.EcrTags
-	fmt.Println("debug")
-	fmt.Println(config.Affinity)
 	DeploymentAffinity = config.Affinity
 }
 
