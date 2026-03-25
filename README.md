@@ -1,74 +1,48 @@
 # What is this?
-This tool allows you to easily create and delete mock resources for [stoplightio/prism](https://github.com/stoplightio/prism) within your Kubernetes cluster. Prism responds to requests based on your OpenAPI definition.
+This tool simplifies the creation and management of [stoplightio/prism](https://github.com/stoplightio/prism) mock resources within a Kubernetes cluster. Prism serves requests based on your OpenAPI specifications.
 
-The tool not only creates a Pod for Prism, but also provisions related resources such as AWS ECR, Kubernetes Namespace, Deployment, Service, and VirtualService. By editing the VirtualService, you can introduce fixed delays using [fault injection](https://istio.io/latest/docs/tasks/traffic-management/fault-injection/), providing a more realistic mock environment.
+Beyond just creating Prism Pods, this tool automates the provisioning of:
 
-This should be especially useful for load testing or developing microservice clients.
+- AWS ECR
+- Kubernetes Namespace, Deployment, and Service
+- Istio VirtualService (allowing for advanced features like fault injection)
 
-![Overview](https://github.com/user-attachments/assets/0666cc59-160e-441e-8f90-b7f2ab2a602a)
+By configuring the VirtualService, you can introduce fixed delays using fault injection to create a more realistic testing environment.
+
+# Prerequisites
+Before using this tool, ensure you have the following installed and configured:
+
+- Tools: Go, kubectl, and Docker.
+- Credentials: Valid AWS and Kubernetes context/credentials.
+  - Note: Ensure your current context is set to the target cluster where you want to deploy the mock resources.
 
 # Usage
-## Step0. Requirements on Your Local Machine
-- AWS and Kubernetes credentials
-- [Go](https://go.dev/doc/install)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
-- [Docker](https://docs.docker.com/get-docker/)
+## Step 1. OpenAPI
+Place your OpenAPI definition in `app/openapi.yaml`.
 
-## Step1. OpenAPI
-Copy and paste your OpenAPI definition into `app/openapi.yaml`.
+## Step 2. Set Parameters
+Define the necessary parameters in `config/params.yaml`. At a minimum, the following are required:
 
-## Step2. Credentials
-In my case, I use [awsp](https://github.com/johnnyopao/awsp) and [kubie](https://github.com/sbstp/kubie).
-
-```bash
-awsp <your_profile>
-kubie ctx <your_context>
-```
-
-Regardless of the tools you use, please ensure your credentials are set.
-
-## Step3. Set Parameters
-Set the necessary parameters in `config/params.yaml`.
-
-At a minimum, you need to set the following parameters:
-
-- microserviceName
+- `microserviceName`
   - Your microservice name
-- microserviceNamespace
+- `microserviceNamespace`
   - Your microservice namespace
 
-## Step4. Create Mock Resources
-Run the following command:
+## Step 3. Deploy Mock Resources
+Run the following command to provision the Prism Pod and its associated resources (ECR, Namespace, Deployment, Service, VirtualService):
 
 ```
 $ make run-create
 ```
 
-The following resources will be created:
-
-- AWS
-  - ECR
-- Kubernetes
-  - Namespace
-  - Deployment
-  - Service
-  - VirtualService
-
-## Step5. Modify VirtualService (Optional)
-To make your mock more realistic, set `spec.http.fault.delay.fixedDelay` in the VirtualService resource.
+## Step 4. (Optional) Advanced Configuration
+To simulate more realistic scenarios, you can modify the Istio VirtualService to include fault injections, such as fixed delays (`spec.http.fault.delay.fixedDelay`).
 
 ```
 $ kubectl edit VirtualService -n <your_namespace> <your_virtual_service_name>
 ```
 
-## Step6. Load Testing
-You can now perform load testing!
-
-Make sure to specify the mock Service.
-
-## Step7. Delete Mock Resources
-When you're done, delete the mock resources with:
-
+# Cleanup
 ```
 $ make run-delete
 ```
@@ -107,36 +81,37 @@ ecrTags:
 
 # For developers
 ## Testing
-Please install the following tools before running the test:
+Ensure the following tools are installed before running the tests:
 
-- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
-- [istioctl](https://istio.io/latest/docs/setup/getting-started/#download)
+- **[kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)**
+- **[istioctl](https://istio.io/latest/docs/setup/getting-started/#download)**
 
 ### Unit tests
-```
+```bash
 $ make test-go
 ```
 
-This make target runs the go unit tests.
+Runs the Go unit tests.
 
-### End-to-end tests
+### End-to-end (E2E) tests
 ```
 $ make test-e2e
 ```
 
-This make target does the following:
+This command automates the following steps:
 
-1. Setup kind cluster
-2. Boot mock resources on the cluster
-3. Boot curl pod on the cluster
-4. Execute curl command from the curl pod to the mock service
-5. Check the response
+1. Sets up a kind cluster.
+2. Deploys mock resources to the cluster.
+3. Launches a curl pod.
+4. Executes a curl command from the pod to the mock service.
+5. Verifies the response.
 
-This takes a few minutes to wait resources to be ready.
+Note: This process may take a few minutes for all resources to become ready.
 
-## Lint
-Please install `golangci-lint` before running the lint:
+## Linting
+Install golangci-lint before running the linter:
 https://golangci-lint.run/welcome/install/#local-installation
+
 
 ```
 $ make lint
