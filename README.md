@@ -83,8 +83,8 @@ ecrTags:
 ## Testing
 Ensure the following tools are installed before running the tests:
 
-- **kind**
-- **istioctl**
+- **[kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)**
+- **[istioctl](https://istio.io/latest/docs/setup/getting-started/#download)**
 
 ### Unit tests
 ```bash
