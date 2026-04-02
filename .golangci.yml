@@ -1,39 +1,16 @@
+version: "2"
+
 run:
   timeout: 3m
   tests: true
 
-linters-settings:
-  forbidigo:
-    forbid:
-      - ^(fmt\.Print(|f|ln)|print|println)$ # default pattern
-      - time\.Now
-  funlen:
-    lines: 100
-    statements: 65
-  tagliatelle:
-    case:
-      rules:
-        json: snake
-  varnamelen:
-    max-distance: 30
-    min-name-length: 3 # default
-    ignore-names:
-      - tt # test table
-      - err # error
-  cyclop:
-    max-complexity: 20
-  nestif:
-    min-complexity: 15
-
-# enable-all first, then disable specific linters
 linters:
-  enable-all: true
+  default: all
   disable:
     - exhaustruct # similar to exhaustivestruct
     - gochecknoglobals # to allow static variables
     - gochecknoinits  # to allow static variables
     - godox # to allow future TODOs
-    - gofumpt # prefer gofmt to adhere to the standard
     - ireturn # prefer to use unexported structs and constructors returning interfaces
     - lll # prefer not to break lines for easier grep
     - nlreturn # do not enforce newline rules
@@ -48,35 +25,83 @@ linters:
     - musttag # exported fields are not always meant to be marshaled
     - nilerr # to return nil errors
     - testifylint # to use assert.NoError
-    - exportloopref # deprecated
-
-issues:
-  exclude-rules:
-    - linters:
-        - forbidigo
-      text: time.Now
-      path: _test\.go
-    - linters:
-        - staticcheck
-      text: "SA4005" # false positive when assigning to variables declared outside the scope
-    - linters:
-        - gosmopolitan
-      text: "string literal contains rune in Han script" # warning for string literals containing Chinese characters
-    - linters:
-        - depguard
-      text: "is not allowed from list 'Main'" # to allow external libraries
-    - linters:
-        - gosec
-      text: "G115" # unreasonable for uint32
-    - path: _test\.go
-      linters:
-        - cyclop
-        - dupl
-        - funlen
-        - gocognit
-        - noctx
-        - gocyclo
-        - maintidx
-    - path: testutil/*
-      linters:
-        - wrapcheck
+    - modernize # prefer existing style
+    - noinlineerr # prefer inline error handling
+    - wsl_v5 # do not enforce newline rules (v2 equivalent of wsl)
+    - godoclint # do not enforce godoc format
+  settings:
+    forbidigo:
+      forbid:
+        - pattern: ^(fmt\.Print(|f|ln)|print|println)$ # default pattern
+        - pattern: time\.Now
+    funlen:
+      lines: 100
+      statements: 65
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+    varnamelen:
+      max-distance: 30
+      min-name-length: 3 # default
+      ignore-names:
+        - tt # test table
+        - err # error
+    cyclop:
+      max-complexity: 20
+    nestif:
+      min-complexity: 15
+  exclusions:
+    rules:
+      - linters:
+          - forbidigo
+        text: time.Now
+        path: _test\.go
+      - linters:
+          - staticcheck
+        text: "SA4005" # false positive when assigning to variables declared outside the scope
+      - linters:
+          - gosmopolitan
+        text: "string literal contains rune in Han script" # warning for string literals containing Chinese characters
+      - linters:
+          - depguard
+        text: "is not allowed from list 'Main'" # to allow external libraries
+      - linters:
+          - gosec
+        text: "G115" # unreasonable for uint32
+      - linters:
+          - gosec
+        text: "G204" # subprocess launched with variable is intentional for docker commands
+      - linters:
+          - gosec
+        text: "G304" # file inclusion via variable is intentional for config loading
+      - linters:
+          - errcheck
+        source: "defer .*\\.Close\\(\\)" # defer close error is acceptable
+      - linters:
+          - revive
+        text: "exported:" # existing code does not have export comments
+      - linters:
+          - revive
+        text: "package-comments:" # existing code does not have package comments
+      - linters:
+          - gosec
+        text: "G703" # path traversal via taint analysis is intentional for config loading
+      - linters:
+          - staticcheck
+        text: "QF" # quickfix suggestions are not errors
+      - linters:
+          - noctx
+        path: app/registry/
+      - path: _test\.go
+        linters:
+          - cyclop
+          - dupl
+          - funlen
+          - gocognit
+          - noctx
+          - gocyclo
+          - maintidx
+      - path: testutil/*
+        linters:
+          - wrapcheck
