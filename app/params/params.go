@@ -22,11 +22,17 @@ const (
 )
 
 var (
-	errEmptyParameter           = errors.New("empty parameter found")
-	errUnsupportedParameterType = errors.New("unsupported parameter type")
-	errFailedToOpenConfigFile   = errors.New("failed to open config file")
-	errFailedToDecodeConfigFile = errors.New("failed to decode config file")
+	errEmptyParameter                = errors.New("empty parameter found")
+	errUnsupportedParameterType      = errors.New("unsupported parameter type")
+	errFailedToOpenConfigFile        = errors.New("failed to open config file")
+	errFailedToDecodeConfigFile      = errors.New("failed to decode config file")
+	errInvalidNodeSelectorOperator   = errors.New("invalid node selector operator")
 )
+
+var validNodeSelectorOperators = map[string]bool{
+	"In": true, "NotIn": true, "Exists": true,
+	"DoesNotExist": true, "Gt": true, "Lt": true,
+}
 
 var (
 	// required parameters
@@ -41,8 +47,10 @@ var (
 	IstioMode         bool
 	IstioProxyCPU     string
 	IstioProxyMemory  string
-	PriorityClassName string
-	EcrTags           []ECRTag
+	PriorityClassName            string
+	NodeAffinityMatchExpressions []NodeAffinityMatchExpression
+	PodAntiAffinityTopologyKey   string
+	EcrTags                      []ECRTag
 )
 
 type Config struct {
@@ -56,8 +64,16 @@ type Config struct {
 	IstioMode             bool          `yaml:"istioMode"`
 	IstioProxyCPU         string        `yaml:"istioProxyCpu"`
 	IstioProxyMemory      string        `yaml:"istioProxyMemory"`
-	PriorityClassName     string        `yaml:"priorityClassName"`
-	EcrTags               []ECRTag      `yaml:"ecrTags"`
+	PriorityClassName            string                       `yaml:"priorityClassName"`
+	NodeAffinityMatchExpressions []NodeAffinityMatchExpression `yaml:"nodeAffinity"`
+	PodAntiAffinityTopologyKey   string                       `yaml:"podAntiAffinityTopologyKey"`
+	EcrTags                      []ECRTag                     `yaml:"ecrTags"`
+}
+
+type NodeAffinityMatchExpression struct {
+	Key      string   `yaml:"key"`
+	Operator string   `yaml:"operator"`
+	Values   []string `yaml:"values"`
 }
 
 type ECRTag struct {
@@ -110,6 +126,8 @@ func init() {
 		IstioProxyMemory = config.IstioProxyMemory
 	}
 	PriorityClassName = config.PriorityClassName
+	NodeAffinityMatchExpressions = config.NodeAffinityMatchExpressions
+	PodAntiAffinityTopologyKey = config.PodAntiAffinityTopologyKey
 	EcrTags = config.EcrTags
 }
 
@@ -160,5 +178,12 @@ func ValidateParams() error {
 			return xerrors.Errorf("%w: %s", errUnsupportedParameterType, name)
 		}
 	}
+
+	for _, expr := range NodeAffinityMatchExpressions {
+		if !validNodeSelectorOperators[expr.Operator] {
+			return xerrors.Errorf("%w: %s", errInvalidNodeSelectorOperator, expr.Operator)
+		}
+	}
+
 	return nil
 }

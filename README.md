@@ -62,6 +62,8 @@ $ make run-delete
 | `istioProxyCpu`               | CPU request for Istio                     | `"500m"`                       | No       |
 | `istioProxyMemory`            | Memory request for Istio                  | `"512Mi"`                      | No       |
 | `priorityClassName`           | Value of priorityClassName                | -                              | No       |
+| `nodeAffinity`                | Node affinity match expressions (key, operator, values). Operators: In, NotIn, Exists, DoesNotExist, Gt, Lt | -                              | No       |
+| `podAntiAffinityTopologyKey`  | Topology key for pod anti-affinity (e.g., `kubernetes.io/hostname`). Prevents multiple pods of the same service from running on the same topology | -                              | No       |
 | `ecrTags`                     | Pairs of ECR tag                          | -                              | No       |
 
 sample:
@@ -72,12 +74,20 @@ microserviceNamespace: "sample"
 prismMockSuffix: "-prism-mock"
 istioMode: false
 priorityClassName: "high-priority"
+nodeAffinity:
+  - key: "karpenter.sh/nodepool"
+    operator: "In"
+    values:
+      - "default"
+podAntiAffinityTopologyKey: "kubernetes.io/hostname"
 ecrTags:
   - key: "CostEnv"
     value: "stg"
   - key: "CostService"
     value: "pet-store"
 ```
+
+Note: `podAntiAffinityTopologyKey` uses `requiredDuringSchedulingIgnoredDuringExecution` with the `app` label of the deployed service as the label selector. This means it prevents multiple pods of the same Prism mock service from being scheduled on the same topology (e.g., same node).
 
 # For developers
 ## Testing
