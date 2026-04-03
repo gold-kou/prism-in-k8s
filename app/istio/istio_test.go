@@ -65,10 +65,12 @@ func TestDeleteIstioResources(t *testing.T) {
 	require.NoError(t, err)
 
 	// test target
-	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName)
+	err = istio.DeleteIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName)
 	assert.NoError(t, err)
 
-	// skip verify to reduce test time
+	// verify
+	_, err = istioClientSet.NetworkingV1alpha3().VirtualServices(testNamespaceName).Get(ctx, testResourceName, metav1.GetOptions{})
+	assert.Error(t, err)
 
 	// clean up
 	err = testutil.DeleteNamespace(ctx, k8sClientSet, testNamespaceName)
