@@ -9,7 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/gold-kou/prism-in-k8s/app/params"
-	"github.com/gold-kou/prism-in-k8s/app/util"
+	"k8s.io/utils/ptr"
 	"github.com/pingcap/errors"
 	"golang.org/x/xerrors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -116,7 +116,7 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 			Name: resourceName,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: util.Int32Ptr(1),
+			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": resourceName,
