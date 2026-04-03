@@ -84,7 +84,7 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 		for _, item := range podList.Items {
 			hyphenedVersions = append(hyphenedVersions, item.ObjectMeta.Labels["istio.io/rev"])
 		}
-		latestVersion := getLatestVersion(hyphenedVersions)
+		latestVersion, err := getLatestVersion(hyphenedVersions)
 		if err != nil {
 			return xerrors.Errorf("%w: %w", errFailedToGetLatestVersion, err)
 		}
@@ -361,26 +361,30 @@ func compareVersions(v1, v2 []int) int {
 	return 0
 }
 
-func getLatestVersion(versions []string) string {
+func getLatestVersion(versions []string) (string, error) {
 	if len(versions) == 0 {
-		return ""
+		return "", nil
 	}
 
-	// init max with the zero index element
-	maxVersion := versions[0]
-	// ignore err
-	maxVersionParts, _ := parseVersion(maxVersion)
+	maxVersion := ""
+	var maxVersionParts []int
 
-	// compare all versions
-	for _, version := range versions[1:] {
-		// ignore err
-		versionParts, _ := parseVersion(version)
+	for _, version := range versions {
+		versionParts, err := parseVersion(version)
+		if err != nil {
+			log.Printf("[WARN] Skipping invalid version %q: %v", version, err)
+			continue
+		}
 
-		if compareVersions(versionParts, maxVersionParts) > 0 {
+		if maxVersionParts == nil || compareVersions(versionParts, maxVersionParts) > 0 {
 			maxVersion = version
 			maxVersionParts = versionParts
 		}
 	}
 
-	return maxVersion
+	if maxVersion == "" {
+		return "", xerrors.Errorf("no valid version found in %v", versions)
+	}
+
+	return maxVersion, nil
 }
