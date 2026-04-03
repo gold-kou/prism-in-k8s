@@ -153,6 +153,8 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 		},
 	}
 
+	deployment.Spec.Template.Spec.Affinity = buildAffinity(resourceName)
+
 	if isTest {
 		// to get image from local
 		deployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullNever
@@ -176,6 +178,58 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 		log.Println("[INFO] Deployment is created successfully")
 	}
 	return nil
+}
+
+func buildAffinity(resourceName string) *corev1.Affinity {
+	hasNodeAffinity := len(params.NodeAffinityMatchExpressions) > 0
+	hasPodAntiAffinity := params.PodAntiAffinityTopologyKey != ""
+
+	if !hasNodeAffinity && !hasPodAntiAffinity {
+		return nil
+	}
+
+	affinity := &corev1.Affinity{}
+
+	if hasNodeAffinity {
+		matchExpressions := make([]corev1.NodeSelectorRequirement, 0, len(params.NodeAffinityMatchExpressions))
+		for _, expr := range params.NodeAffinityMatchExpressions {
+			matchExpressions = append(matchExpressions, corev1.NodeSelectorRequirement{
+				Key:      expr.Key,
+				Operator: corev1.NodeSelectorOperator(expr.Operator),
+				Values:   expr.Values,
+			})
+		}
+		affinity.NodeAffinity = &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{
+					{
+						MatchExpressions: matchExpressions,
+					},
+				},
+			},
+		}
+	}
+
+	if hasPodAntiAffinity {
+		affinity.PodAntiAffinity = &corev1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "app",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{resourceName},
+							},
+						},
+					},
+					TopologyKey: params.PodAntiAffinityTopologyKey,
+				},
+			},
+		}
+	}
+
+	return affinity
 }
 
 func createService(ctx context.Context, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string) error {
