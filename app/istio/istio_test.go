@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"istio.io/client-go/pkg/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -71,6 +72,7 @@ func TestDeleteIstioResources(t *testing.T) {
 	// verify
 	_, err = istioClientSet.NetworkingV1alpha3().VirtualServices(testNamespaceName).Get(ctx, testResourceName, metav1.GetOptions{})
 	assert.Error(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 
 	// clean up
 	err = testutil.DeleteNamespace(ctx, k8sClientSet, testNamespaceName)
