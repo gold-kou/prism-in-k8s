@@ -37,6 +37,7 @@ var (
 	errFailedToDeleteService    = errors.New("failed to delete service")
 	errFailedToListPods         = errors.New("failed to list pods")
 	errFailedToGetLatestVersion = errors.New("failed to get latest version")
+	errNoValidVersionFound      = errors.New("no valid version found")
 )
 
 func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, isTest bool) error {
@@ -86,7 +87,7 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 		}
 		latestVersion, err := getLatestVersion(hyphenedVersions)
 		if err != nil {
-			return xerrors.Errorf("%w: %w", errFailedToGetLatestVersion, err)
+			return fmt.Errorf("%w: %w", errFailedToGetLatestVersion, err)
 		}
 		namespace.ObjectMeta.Labels["istio.io/rev"] = latestVersion
 	}
@@ -383,7 +384,7 @@ func getLatestVersion(versions []string) (string, error) {
 	}
 
 	if maxVersion == "" {
-		return "", xerrors.Errorf("no valid version found in %v", versions)
+		return "", fmt.Errorf("%w: %v", errNoValidVersionFound, versions)
 	}
 
 	return maxVersion, nil
