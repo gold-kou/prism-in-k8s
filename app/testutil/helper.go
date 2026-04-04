@@ -54,8 +54,8 @@ func CreateDeployment(ctx context.Context, clientset *kubernetes.Clientset, name
 					},
 					Annotations: map[string]string{
 						"sidecar.istio.io/inject":                          "true",
-						"sidecar.istio.io/proxyCPULimit":                   params.IstioProxyCPU,
-						"sidecar.istio.io/proxyMemoryLimit":                params.IstioProxyMemory,
+						"sidecar.istio.io/proxyCPULimit":                   params.DefaultIstioProxyCPU,
+						"sidecar.istio.io/proxyMemoryLimit":                params.DefaultIstioProxyMemory,
 						"traffic.sidecar.istio.io/includeOutboundIPRanges": "*",
 						"proxy.istio.io/config":                            `{ "terminationDrainDuration": "30s" }`,
 					},
@@ -67,13 +67,13 @@ func CreateDeployment(ctx context.Context, clientset *kubernetes.Clientset, name
 							Image: "my-local-image:v1",
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: int32(params.PrismPort),
+									ContainerPort: int32(params.DefaultPrismPort),
 								},
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(params.PrismCPU),
-									corev1.ResourceMemory: resource.MustParse(params.PrismMemory),
+									corev1.ResourceCPU:    resource.MustParse(params.DefaultPrismCPU),
+									corev1.ResourceMemory: resource.MustParse(params.DefaultPrismMemory),
 								},
 							},
 						},

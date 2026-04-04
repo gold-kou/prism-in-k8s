@@ -2,14 +2,15 @@ package istio
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/pingcap/errors"
-	"golang.org/x/xerrors"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"istio.io/client-go/pkg/clientset/versioned"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	restclient "k8s.io/client-go/rest"
 )
@@ -29,7 +30,7 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 	// Istio clientset
 	istioClientSet, err := versioned.NewForConfig(kubeconfig)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToCreateIstioClient, err)
+		return fmt.Errorf("%w: %w", errFailedToCreateIstioClient, err)
 	}
 
 	// VirtualService
@@ -91,8 +92,8 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 	}
 	_, err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Create(ctx, virtualService, metav1.CreateOptions{})
 	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			return xerrors.Errorf("%w: %w", errFailedToCreateVirtualService, err)
+		if !apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("%w: %w", errFailedToCreateVirtualService, err)
 		}
 		log.Println("[WARN] The VirtualService already exists")
 	} else {
@@ -105,14 +106,14 @@ func DeleteIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 	// Istio clientset
 	istioClientSet, err := versioned.NewForConfig(kubeconfig)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToCreateIstioClient, err)
+		return fmt.Errorf("%w: %w", errFailedToCreateIstioClient, err)
 	}
 	log.Println("[INFO] Clientset of istio set up successfully")
 
 	err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return xerrors.Errorf("%w: %w", errFailedToDeleteVirtualService, err)
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("%w: %w", errFailedToDeleteVirtualService, err)
 		}
 		log.Println("[WARN] The VirtualService is not found")
 	} else {

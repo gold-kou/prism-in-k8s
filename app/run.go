@@ -2,115 +2,138 @@ package app
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"fmt"
 	"log"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/gold-kou/prism-in-k8s/app/istio"
 	"github.com/gold-kou/prism-in-k8s/app/k8s"
 	"github.com/gold-kou/prism-in-k8s/app/params"
 	"github.com/gold-kou/prism-in-k8s/app/registry"
-	"golang.org/x/xerrors"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
-	isCreate      bool
-	isDelete      bool
-	isTest        bool
+	errFailedToLoadAWSConfig     = errors.New("failed to load AWS config")
+	errFailedToGetCallerIdentity = errors.New("failed to get caller identity")
+	errFailedToBuildKubeConfig   = errors.New("failed to build Kubeconfig")
+	errParamsConfigPathNotSet    = errors.New("PARAMS_CONFIG_PATH is not set")
+)
+
+type App struct {
+	config        *params.Config
 	awsConfig     aws.Config
 	awsAccountID  string
 	kubeConfig    *restclient.Config
 	resourceName  string
 	namespaceName string
-)
+	isCreate      bool
+	isDelete      bool
+	isTest        bool
+}
 
-func init() {
-	// command args
-	flag.BoolVar(&isCreate, "create", false, "set to true if running in create mode")
-	flag.BoolVar(&isDelete, "delete", false, "set to true if running in delete mode")
-	flag.BoolVar(&isTest, "test", false, "set to true if running in test mode")
+func NewApp() (*App, error) {
+	application := &App{}
+
+	flag.BoolVar(&application.isCreate, "create", false, "set to true if running in create mode")
+	flag.BoolVar(&application.isDelete, "delete", false, "set to true if running in delete mode")
+	flag.BoolVar(&application.isTest, "test", false, "set to true if running in test mode")
 	flag.Parse()
 
-	// validation parameters
-	err := params.ValidateParams()
-	if err != nil {
-		panic(err)
+	// load and validate config
+	configPath := os.Getenv("PARAMS_CONFIG_PATH")
+	if configPath == "" {
+		return nil, errParamsConfigPathNotSet
 	}
 
-	if !isTest {
+	cfg, err := params.LoadConfig(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+	application.config = cfg
+
+	if !application.isTest {
 		// AWS config
-		awsConfig, err = config.LoadDefaultConfig(context.Background())
+		application.awsConfig, err = awsconfig.LoadDefaultConfig(context.Background())
 		if err != nil {
-			panic(xerrors.Errorf("failed load AWS config: %v", err))
+			return nil, fmt.Errorf("%w: %w", errFailedToLoadAWSConfig, err)
 		}
 
 		// get AWS account ID
-		stsClient := sts.NewFromConfig(awsConfig)
+		stsClient := sts.NewFromConfig(application.awsConfig)
 		result, err := stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 		if err != nil {
-			panic(xerrors.Errorf("failed to get caller identity: %v", err))
+			return nil, fmt.Errorf("%w: %w", errFailedToGetCallerIdentity, err)
 		}
-		awsAccountID = *result.Account
+		application.awsAccountID = *result.Account
 	}
 
 	// kube config
 	kubeconfigPath := clientcmd.NewDefaultPathOptions().GetDefaultFilename()
-	kubeConfig, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	application.kubeConfig, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 	if err != nil {
-		panic(xerrors.Errorf("failed to build Kubeconfig: %v", err))
+		return nil, fmt.Errorf("%w: %w", errFailedToBuildKubeConfig, err)
 	}
 
 	// resource name
-	resourceName = "test-microservice"
-	namespaceName = "test-namespace"
-	if params.MicroserviceName != "" && params.MicroserviceNamespace != "" {
-		resourceName = params.MicroserviceName + params.PrismMockSuffix
-		namespaceName = params.MicroserviceNamespace + params.PrismMockSuffix
+	application.resourceName = "test-microservice"
+	application.namespaceName = "test-namespace"
+	if cfg.MicroserviceName != "" && cfg.MicroserviceNamespace != "" {
+		application.resourceName = cfg.MicroserviceName + cfg.PrismMockSuffix
+		application.namespaceName = cfg.MicroserviceNamespace + cfg.PrismMockSuffix
 	}
+
+	return application, nil
 }
 
-func Run() {
-	ctx, cancel := context.WithTimeout(context.Background(), params.Timeout)
+func (a *App) Run() {
+	ctx, cancel := context.WithTimeout(context.Background(), a.config.Timeout)
 	defer cancel()
 
-	if isCreate {
-		if !isTest {
-			err := registry.BuildAndPushECR(ctx, awsConfig, awsAccountID, resourceName)
+	if a.isCreate {
+		if !a.isTest {
+			err := registry.BuildAndPushECR(ctx, a.awsConfig, a.awsAccountID, a.resourceName, a.config)
 			if err != nil {
 				panic(err)
 			}
 		}
 
-		err := k8s.CreateK8sResources(ctx, awsAccountID, awsConfig, kubeConfig, namespaceName, resourceName, params.IstioMode, isTest)
+		err := k8s.CreateK8sResources(ctx, a.awsAccountID, a.awsConfig, a.kubeConfig, a.namespaceName, a.resourceName, a.config, a.isTest)
 		if err != nil {
 			panic(err)
 		}
 
-		if params.IstioMode {
-			err = istio.CreateIstioResources(ctx, kubeConfig, namespaceName, resourceName)
+		if a.config.IstioMode {
+			err = istio.CreateIstioResources(ctx, a.kubeConfig, a.namespaceName, a.resourceName)
 			if err != nil {
 				panic(err)
 			}
 		}
 		log.Println("[INFO] All resources for prism mock are created successfully")
-	} else if isDelete {
-		if params.IstioMode {
-			err := istio.DeleteIstioResources(ctx, kubeConfig, namespaceName, resourceName)
+	} else if a.isDelete {
+		if a.config.IstioMode {
+			err := istio.DeleteIstioResources(ctx, a.kubeConfig, a.namespaceName, a.resourceName)
 			if err != nil {
 				panic(err)
 			}
 		}
 
-		err := k8s.DeleteK8sResources(ctx, kubeConfig, namespaceName, resourceName)
+		err := k8s.DeleteK8sResources(ctx, a.kubeConfig, a.namespaceName, a.resourceName)
 		if err != nil {
 			panic(err)
 		}
 
-		err = registry.DeleteECR(ctx, awsConfig, resourceName)
+		err = registry.DeleteECR(ctx, a.awsConfig, a.resourceName)
 		if err != nil {
 			panic(err)
 		}

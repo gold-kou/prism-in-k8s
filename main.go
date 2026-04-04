@@ -1,7 +1,15 @@
 package main
 
-import "github.com/gold-kou/prism-in-k8s/app"
+import (
+	"log"
+
+	"github.com/gold-kou/prism-in-k8s/app"
+)
 
 func main() {
-	app.Run()
+	a, err := app.NewApp()
+	if err != nil {
+		log.Fatalf("failed to initialize app: %v", err)
+	}
+	a.Run()
 }

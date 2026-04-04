@@ -3,30 +3,27 @@ package params
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
-	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v2"
 )
 
 const (
-	defaultTimeout          = 10 * time.Minute
-	defaultPrismPort        = 80
-	defaultPrismCPU         = "500m"
-	defaultPrismMemory      = "512Mi"
-	defaultIstioMode        = true
-	defaultIstioProxyCPU    = "500m"
-	defaultIstioProxyMemory = "512Mi"
+	DefaultTimeout          = 10 * time.Minute
+	DefaultPrismPort        = 80
+	DefaultPrismCPU         = "500m"
+	DefaultPrismMemory      = "512Mi"
+	DefaultIstioProxyCPU    = "500m"
+	DefaultIstioProxyMemory = "512Mi"
 )
 
 var (
-	errEmptyParameter                = errors.New("empty parameter found")
-	errUnsupportedParameterType      = errors.New("unsupported parameter type")
-	errFailedToOpenConfigFile        = errors.New("failed to open config file")
-	errFailedToDecodeConfigFile      = errors.New("failed to decode config file")
-	errInvalidNodeSelectorOperator   = errors.New("invalid node selector operator")
+	errEmptyParameter              = errors.New("empty parameter found")
+	errUnsupportedParameterType    = errors.New("unsupported parameter type")
+	errFailedToOpenConfigFile      = errors.New("failed to open config file")
+	errFailedToDecodeConfigFile    = errors.New("failed to decode config file")
+	errInvalidNodeSelectorOperator = errors.New("invalid node selector operator")
 )
 
 var validNodeSelectorOperators = map[string]bool{
@@ -34,40 +31,23 @@ var validNodeSelectorOperators = map[string]bool{
 	"DoesNotExist": true, "Gt": true, "Lt": true,
 }
 
-var (
-	// required parameters
-	MicroserviceName      string
-	MicroserviceNamespace string
-	PrismMockSuffix       string
-	// optional parameters
-	Timeout           time.Duration
-	PrismPort         int
-	PrismCPU          string
-	PrismMemory       string
-	IstioMode         bool
-	IstioProxyCPU     string
-	IstioProxyMemory  string
-	PriorityClassName            string
-	NodeAffinityMatchExpressions []NodeAffinityMatchExpression
-	PodAntiAffinityTopologyKey   string
-	EcrTags                      []ECRTag
-)
-
 type Config struct {
-	MicroserviceName      string        `yaml:"microserviceName"`
-	MicroserviceNamespace string        `yaml:"microserviceNamespace"`
-	PrismMockSuffix       string        `yaml:"prismMockSuffix"`
-	Timeout               time.Duration `yaml:"timeout"`
-	PrismPort             int           `yaml:"prismPort"`
-	PrismCPU              string        `yaml:"prismCpu"`
-	PrismMemory           string        `yaml:"prismMemory"`
-	IstioMode             bool          `yaml:"istioMode"`
-	IstioProxyCPU         string        `yaml:"istioProxyCpu"`
-	IstioProxyMemory      string        `yaml:"istioProxyMemory"`
-	PriorityClassName            string                       `yaml:"priorityClassName"`
+	// required parameters
+	MicroserviceName      string `yaml:"microserviceName"`
+	MicroserviceNamespace string `yaml:"microserviceNamespace"`
+	PrismMockSuffix       string `yaml:"prismMockSuffix"`
+	// optional parameters
+	Timeout                      time.Duration                 `yaml:"timeout"`
+	PrismPort                    int                           `yaml:"prismPort"`
+	PrismCPU                     string                        `yaml:"prismCpu"`
+	PrismMemory                  string                        `yaml:"prismMemory"`
+	IstioMode                    bool                          `yaml:"istioMode"`
+	IstioProxyCPU                string                        `yaml:"istioProxyCpu"`
+	IstioProxyMemory             string                        `yaml:"istioProxyMemory"`
+	PriorityClassName            string                        `yaml:"priorityClassName"`
 	NodeAffinityMatchExpressions []NodeAffinityMatchExpression `yaml:"nodeAffinity"`
-	PodAntiAffinityTopologyKey   string                       `yaml:"podAntiAffinityTopologyKey"`
-	EcrTags                      []ECRTag                     `yaml:"ecrTags"`
+	PodAntiAffinityTopologyKey   string                        `yaml:"podAntiAffinityTopologyKey"`
+	EcrTags                      []ECRTag                      `yaml:"ecrTags"`
 }
 
 type NodeAffinityMatchExpression struct {
@@ -79,56 +59,6 @@ type NodeAffinityMatchExpression struct {
 type ECRTag struct {
 	Key   string `yaml:"key"`
 	Value string `yaml:"value"`
-}
-
-func init() {
-	path := os.Getenv("PARAMS_CONFIG_PATH")
-	if path == "" {
-		log.Fatal("PARAMS_CONFIG_PATH is not set")
-	}
-	config, err := LoadConfig(path)
-	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
-	}
-
-	// required parameters
-	MicroserviceName = config.MicroserviceName
-	MicroserviceNamespace = config.MicroserviceNamespace
-	PrismMockSuffix = config.PrismMockSuffix
-
-	// optional parameters
-	Timeout = defaultTimeout
-	if config.Timeout != 0 {
-		Timeout = config.Timeout
-	}
-	PrismPort = defaultPrismPort
-	if config.PrismPort != 0 {
-		PrismPort = config.PrismPort
-	}
-	PrismCPU = defaultPrismCPU
-	if config.PrismCPU != "" {
-		PrismCPU = config.PrismCPU
-	}
-	PrismMemory = defaultPrismMemory
-	if config.PrismMemory != "" {
-		PrismMemory = config.PrismMemory
-	}
-	IstioMode = false
-	if config.IstioMode {
-		IstioMode = config.IstioMode
-	}
-	IstioProxyCPU = defaultIstioProxyCPU
-	if config.IstioProxyCPU != "" {
-		IstioProxyCPU = config.IstioProxyCPU
-	}
-	IstioProxyMemory = defaultIstioProxyMemory
-	if config.IstioProxyMemory != "" {
-		IstioProxyMemory = config.IstioProxyMemory
-	}
-	PriorityClassName = config.PriorityClassName
-	NodeAffinityMatchExpressions = config.NodeAffinityMatchExpressions
-	PodAntiAffinityTopologyKey = config.PodAntiAffinityTopologyKey
-	EcrTags = config.EcrTags
 }
 
 func LoadConfig(filename string) (*Config, error) {
@@ -144,44 +74,67 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, fmt.Errorf("%w: %w", errFailedToDecodeConfigFile, err)
 	}
 
+	config.ApplyDefaults()
+
 	return &config, nil
 }
 
-func ValidateParams() error {
+func (c *Config) ApplyDefaults() {
+	if c.Timeout == 0 {
+		c.Timeout = DefaultTimeout
+	}
+	if c.PrismPort == 0 {
+		c.PrismPort = DefaultPrismPort
+	}
+	if c.PrismCPU == "" {
+		c.PrismCPU = DefaultPrismCPU
+	}
+	if c.PrismMemory == "" {
+		c.PrismMemory = DefaultPrismMemory
+	}
+	if c.IstioProxyCPU == "" {
+		c.IstioProxyCPU = DefaultIstioProxyCPU
+	}
+	if c.IstioProxyMemory == "" {
+		c.IstioProxyMemory = DefaultIstioProxyMemory
+	}
+}
+
+func (c *Config) Validate() error {
 	params := map[string]interface{}{
-		"microserviceName":      MicroserviceName,
-		"microserviceNamespace": MicroserviceNamespace,
-		"prismMockSuffix":       PrismMockSuffix,
-		"timeout":               Timeout,
-		"prismPort":             PrismPort,
-		"prismCPU":              PrismCPU,
-		"prismMemory":           PrismMemory,
-		"istioProxyCPU":         IstioProxyCPU,
-		"istioProxyMemory":      IstioProxyMemory,
+		"microserviceName":      c.MicroserviceName,
+		"microserviceNamespace": c.MicroserviceNamespace,
+		"prismMockSuffix":       c.PrismMockSuffix,
+		"timeout":               c.Timeout,
+		"prismPort":             c.PrismPort,
+		"prismCPU":              c.PrismCPU,
+		"prismMemory":           c.PrismMemory,
+		"istioProxyCPU":         c.IstioProxyCPU,
+		"istioProxyMemory":      c.IstioProxyMemory,
 	}
 
 	for name, value := range params {
 		switch v := value.(type) {
 		case string:
 			if v == "" {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		case int:
 			if v == 0 {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		case time.Duration:
 			if v == 0*time.Millisecond {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		default:
-			return xerrors.Errorf("%w: %s", errUnsupportedParameterType, name)
+			return fmt.Errorf("%w: %s", errUnsupportedParameterType, name)
 		}
 	}
 
-	for _, expr := range NodeAffinityMatchExpressions {
+	for _, expr := range c.NodeAffinityMatchExpressions {
 		if !validNodeSelectorOperators[expr.Operator] {
-			return xerrors.Errorf("%w: %s", errInvalidNodeSelectorOperator, expr.Operator)
+			return fmt.Errorf("%w: %s", errInvalidNodeSelectorOperator, expr.Operator)
 		}
 	}
 

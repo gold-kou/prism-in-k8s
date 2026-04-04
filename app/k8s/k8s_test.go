@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/gold-kou/prism-in-k8s/app/k8s"
+	"github.com/gold-kou/prism-in-k8s/app/params"
 	"github.com/gold-kou/prism-in-k8s/app/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -27,8 +28,17 @@ func TestCreateK8sResources(t *testing.T) {
 	kubeconfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 	require.NoError(t, err)
 
+	cfg := &params.Config{
+		PrismPort:        params.DefaultPrismPort,
+		PrismCPU:         params.DefaultPrismCPU,
+		PrismMemory:      params.DefaultPrismMemory,
+		IstioMode:        true,
+		IstioProxyCPU:    params.DefaultIstioProxyCPU,
+		IstioProxyMemory: params.DefaultIstioProxyMemory,
+	}
+
 	// test target
-	err = k8s.CreateK8sResources(ctx, dummyAWSAccountID, awsConfig, kubeconfig, testNamespaceName, testResourceName, true, true)
+	err = k8s.CreateK8sResources(ctx, dummyAWSAccountID, awsConfig, kubeconfig, testNamespaceName, testResourceName, cfg, true)
 	require.NoError(t, err)
 
 	// verify

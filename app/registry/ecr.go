@@ -13,30 +13,29 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/ecr/types"
 	"github.com/gold-kou/prism-in-k8s/app/params"
-	"golang.org/x/xerrors"
 )
 
 var (
 	errFailedToBuildDockerImage = errors.New("failed to build docker image")
-	errFailedToCreateECR        = errors.New("failed to create ECR repository")
-	errFailedToTagImage         = errors.New("failed to tag image")
-	errFailedToLoginECR         = errors.New("failed to log in ECR")
-	errFailedToPushImage        = errors.New("failed to push image to ECR")
-	errFailedToDeleteECR        = errors.New("failed to delete ECR repository")
+	errFailedToCreateECR       = errors.New("failed to create ECR repository")
+	errFailedToTagImage        = errors.New("failed to tag image")
+	errFailedToLoginECR        = errors.New("failed to log in ECR")
+	errFailedToPushImage       = errors.New("failed to push image to ECR")
+	errFailedToDeleteECR       = errors.New("failed to delete ECR repository")
 )
 
-func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, resourceName string) error {
+func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, resourceName string, cfg *params.Config) error {
 	// build Docker image
-	imageTag := params.MicroserviceName + ":v1"
+	imageTag := cfg.MicroserviceName + ":v1"
 	cmd := exec.Command("docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.prism", "-t", imageTag, ".")
 	if err := cmd.Run(); err != nil {
-		return xerrors.Errorf("%s: %v", errFailedToBuildDockerImage, err)
+		return fmt.Errorf("%w: %w", errFailedToBuildDockerImage, err)
 	}
 	log.Println("[INFO] Docker image is built successfully")
 
 	// ECR tags
 	tags := []types.Tag{}
-	for _, ecrTag := range params.EcrTags {
+	for _, ecrTag := range cfg.EcrTags {
 		if ecrTag.Key != "" || ecrTag.Value != "" {
 			tags = append(tags, types.Tag{
 				Key:   aws.String(ecrTag.Key),
@@ -56,7 +55,7 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 	if err != nil {
 		var ecrExistsException *types.RepositoryAlreadyExistsException
 		if !errors.As(err, &ecrExistsException) {
-			return xerrors.Errorf("%w: %w", errFailedToCreateECR, err)
+			return fmt.Errorf("%w: %w", errFailedToCreateECR, err)
 		}
 		log.Println("[WARN] The ECR already exists")
 	} else {
@@ -67,21 +66,21 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 	ecrImageTag := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:latest", awsAccountID, awsConfig.Region, repositoryName)
 	cmdTag := exec.Command("docker", "tag", imageTag, ecrImageTag)
 	if err := cmdTag.Run(); err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToTagImage, err)
+		return fmt.Errorf("%w: %w", errFailedToTagImage, err)
 	}
 	log.Println("[INFO] Docker image tagged successfully")
 
 	// login to ECR
 	err = loginToECR(ctx, awsConfig, awsAccountID)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToLoginECR, err)
+		return fmt.Errorf("%w: %w", errFailedToLoginECR, err)
 	}
 	log.Println("[INFO] Logged in ECR successfully")
 
 	// push image to ECR
 	cmdPush := exec.Command("docker", "push", ecrImageTag)
 	if err := cmdPush.Run(); err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToPushImage, err)
+		return fmt.Errorf("%w: %w", errFailedToPushImage, err)
 	}
 	log.Println("[INFO] Docker image is pushed to ECR successfully")
 	return nil
@@ -140,7 +139,7 @@ func DeleteECR(ctx context.Context, awsConfig aws.Config, resourceName string) e
 	if err != nil {
 		var ecrNotFoundException *types.RepositoryNotFoundException
 		if !errors.As(err, &ecrNotFoundException) {
-			return xerrors.Errorf("%w: %w", errFailedToDeleteECR, err)
+			return fmt.Errorf("%w: %w", errFailedToDeleteECR, err)
 		}
 		log.Println("[WARN] The ECR is not found")
 	} else {

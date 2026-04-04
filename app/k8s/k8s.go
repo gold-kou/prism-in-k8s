@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -10,10 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/gold-kou/prism-in-k8s/app/params"
 	"github.com/gold-kou/prism-in-k8s/app/util"
-	"github.com/pingcap/errors"
-	"golang.org/x/xerrors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -37,27 +37,29 @@ var (
 	errFailedToDeleteService    = errors.New("failed to delete service")
 	errFailedToListPods         = errors.New("failed to list pods")
 	errFailedToGetLatestVersion = errors.New("failed to get latest version")
+	errInvalidVersionFormat     = errors.New("invalid version format")
+	errInvalidNumberInVersion   = errors.New("invalid number in version")
 )
 
-func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, isTest bool) error {
+func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, cfg *params.Config, isTest bool) error {
 	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToCreateClientSet, err)
+		return fmt.Errorf("%w: %w", errFailedToCreateClientSet, err)
 	}
 
-	err = createNamespace(ctx, k8sClientSet, namespaceName, istioMode)
+	err = createNamespace(ctx, k8sClientSet, namespaceName, cfg.IstioMode)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToCreateNameSpace, err)
+		return fmt.Errorf("%w: %w", errFailedToCreateNameSpace, err)
 	}
 
-	err = crateDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, istioMode, isTest)
+	err = crateDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, cfg, isTest)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToCreateDeployment, err)
+		return fmt.Errorf("%w: %w", errFailedToCreateDeployment, err)
 	}
 
 	err = createService(ctx, k8sClientSet, namespaceName, resourceName)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToCreateService, err)
+		return fmt.Errorf("%w: %w", errFailedToCreateService, err)
 	}
 
 	return nil
@@ -78,23 +80,23 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 			LabelSelector: "app=istiod",
 		})
 		if err != nil {
-			return xerrors.Errorf("%w: %w", errFailedToListPods, err)
+			return fmt.Errorf("%w: %w", errFailedToListPods, err)
 		}
 		hyphenedVersions := []string{}
 		for _, item := range podList.Items {
 			hyphenedVersions = append(hyphenedVersions, item.ObjectMeta.Labels["istio.io/rev"])
 		}
-		latestVersion := getLatestVersion(hyphenedVersions)
+		latestVersion, err := getLatestVersion(hyphenedVersions)
 		if err != nil {
-			return xerrors.Errorf("%w: %w", errFailedToGetLatestVersion, err)
+			return fmt.Errorf("%w: %w", errFailedToGetLatestVersion, err)
 		}
 		namespace.ObjectMeta.Labels["istio.io/rev"] = latestVersion
 	}
 
 	_, err := k8sClientSet.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			return xerrors.Errorf("%w: %w", errFailedToCreateNameSpace, err)
+		if !apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("%w: %w", errFailedToCreateNameSpace, err)
 		}
 		log.Println("[WARN] The namespace already exists")
 	} else {
@@ -103,7 +105,7 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 	return nil
 }
 
-func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Config, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string, istioMode, isTest bool) error {
+func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Config, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string, cfg *params.Config, isTest bool) error {
 	// Prism image
 	prismImage := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s", awsAccountID, awsConfig.Region, resourceName)
 	if isTest {
@@ -136,42 +138,42 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 							Image: prismImage,
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: int32(params.PrismPort),
+									ContainerPort: int32(cfg.PrismPort),
 								},
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(params.PrismCPU),
-									corev1.ResourceMemory: resource.MustParse(params.PrismMemory),
+									corev1.ResourceCPU:    resource.MustParse(cfg.PrismCPU),
+									corev1.ResourceMemory: resource.MustParse(cfg.PrismMemory),
 								},
 							},
 						},
 					},
-					PriorityClassName: params.PriorityClassName,
+					PriorityClassName: cfg.PriorityClassName,
 				},
 			},
 		},
 	}
 
-	deployment.Spec.Template.Spec.Affinity = buildAffinity(resourceName)
+	deployment.Spec.Template.Spec.Affinity = buildAffinity(resourceName, cfg)
 
 	if isTest {
 		// to get image from local
 		deployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullNever
 	}
 
-	if istioMode {
+	if cfg.IstioMode {
 		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/inject"] = "true"
-		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/proxyCPULimit"] = params.IstioProxyCPU
-		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/proxyMemoryLimit"] = params.IstioProxyMemory
+		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/proxyCPULimit"] = cfg.IstioProxyCPU
+		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/proxyMemoryLimit"] = cfg.IstioProxyMemory
 		deployment.Spec.Template.ObjectMeta.Annotations["traffic.sidecar.istio.io/includeOutboundIPRanges"] = "*"
 		deployment.Spec.Template.ObjectMeta.Annotations["proxy.istio.io/config"] = `{ "terminationDrainDuration": "30s" }`
 	}
 
 	_, err := k8sClientSet.AppsV1().Deployments(namespaceName).Create(ctx, deployment, metav1.CreateOptions{})
 	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			return xerrors.Errorf("%w: %w", errFailedToCreateDeployment, err)
+		if !apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("%w: %w", errFailedToCreateDeployment, err)
 		}
 		log.Println("[WARN] The deployment already exists")
 	} else {
@@ -180,9 +182,9 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 	return nil
 }
 
-func buildAffinity(resourceName string) *corev1.Affinity {
-	hasNodeAffinity := len(params.NodeAffinityMatchExpressions) > 0
-	hasPodAntiAffinity := params.PodAntiAffinityTopologyKey != ""
+func buildAffinity(resourceName string, cfg *params.Config) *corev1.Affinity {
+	hasNodeAffinity := len(cfg.NodeAffinityMatchExpressions) > 0
+	hasPodAntiAffinity := cfg.PodAntiAffinityTopologyKey != ""
 
 	if !hasNodeAffinity && !hasPodAntiAffinity {
 		return nil
@@ -191,8 +193,8 @@ func buildAffinity(resourceName string) *corev1.Affinity {
 	affinity := &corev1.Affinity{}
 
 	if hasNodeAffinity {
-		matchExpressions := make([]corev1.NodeSelectorRequirement, 0, len(params.NodeAffinityMatchExpressions))
-		for _, expr := range params.NodeAffinityMatchExpressions {
+		matchExpressions := make([]corev1.NodeSelectorRequirement, 0, len(cfg.NodeAffinityMatchExpressions))
+		for _, expr := range cfg.NodeAffinityMatchExpressions {
 			matchExpressions = append(matchExpressions, corev1.NodeSelectorRequirement{
 				Key:      expr.Key,
 				Operator: corev1.NodeSelectorOperator(expr.Operator),
@@ -223,7 +225,7 @@ func buildAffinity(resourceName string) *corev1.Affinity {
 							},
 						},
 					},
-					TopologyKey: params.PodAntiAffinityTopologyKey,
+					TopologyKey: cfg.PodAntiAffinityTopologyKey,
 				},
 			},
 		}
@@ -253,8 +255,8 @@ func createService(ctx context.Context, k8sClientSet *kubernetes.Clientset, name
 	}
 	_, err := k8sClientSet.CoreV1().Services(namespaceName).Create(ctx, service, metav1.CreateOptions{})
 	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			return xerrors.Errorf("%w: %w", errFailedToCreateService, err)
+		if !apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("%w: %w", errFailedToCreateService, err)
 		}
 		log.Println("[WARN] The service already exists")
 	} else {
@@ -266,23 +268,23 @@ func createService(ctx context.Context, k8sClientSet *kubernetes.Clientset, name
 func DeleteK8sResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
 	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToCreateClientSet, err)
+		return fmt.Errorf("%w: %w", errFailedToCreateClientSet, err)
 	}
 	log.Println("[INFO] Clientset of k8s set up successfully")
 
 	err = deleteService(ctx, k8sClientSet, namespaceName, resourceName)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToDeleteService, err)
+		return fmt.Errorf("%w: %w", errFailedToDeleteService, err)
 	}
 
 	err = deleteDeployment(ctx, k8sClientSet, namespaceName, resourceName)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToDeleteDeployment, err)
+		return fmt.Errorf("%w: %w", errFailedToDeleteDeployment, err)
 	}
 
 	err = deleteNamespace(ctx, k8sClientSet, namespaceName)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToDeleteNameSpace, err)
+		return fmt.Errorf("%w: %w", errFailedToDeleteNameSpace, err)
 	}
 
 	return nil
@@ -291,8 +293,8 @@ func DeleteK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 func deleteService(ctx context.Context, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string) error {
 	err := k8sClientSet.CoreV1().Services(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return xerrors.Errorf("%w: %w", errFailedToDeleteService, err)
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("%w: %w", errFailedToDeleteService, err)
 		}
 		log.Println("[WARN] The service is not found")
 	} else {
@@ -304,8 +306,8 @@ func deleteService(ctx context.Context, k8sClientSet *kubernetes.Clientset, name
 func deleteDeployment(ctx context.Context, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string) error {
 	err := k8sClientSet.AppsV1().Deployments(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return xerrors.Errorf("%w: %w", errFailedToDeleteDeployment, err)
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("%w: %w", errFailedToDeleteDeployment, err)
 		}
 		log.Println("[WARN] The Deployment is not found")
 	} else {
@@ -317,8 +319,8 @@ func deleteDeployment(ctx context.Context, k8sClientSet *kubernetes.Clientset, n
 func deleteNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, namespaceName string) error {
 	err := k8sClientSet.CoreV1().Namespaces().Delete(ctx, namespaceName, metav1.DeleteOptions{})
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return xerrors.Errorf("%w: %w", errFailedToDeleteNameSpace, err)
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("%w: %w", errFailedToDeleteNameSpace, err)
 		}
 		log.Println("[WARN] The Namespace is not found")
 	} else {
@@ -333,14 +335,14 @@ func parseVersion(version string) ([]int, error) {
 	// convert "x-y-z" to [x, y, z]
 	parts := strings.Split(version, "-")
 	if len(parts) != versions {
-		return nil, xerrors.Errorf("invalid version format: %s", version)
+		return nil, fmt.Errorf("%w: %s", errInvalidVersionFormat, version)
 	}
 
 	intParts := make([]int, len(parts))
 	for i, part := range parts {
 		num, err := strconv.Atoi(part)
 		if err != nil {
-			return nil, xerrors.Errorf("invalid number in version: %s", part)
+			return nil, fmt.Errorf("%w: %s", errInvalidNumberInVersion, part)
 		}
 		intParts[i] = num
 	}
@@ -361,26 +363,30 @@ func compareVersions(v1, v2 []int) int {
 	return 0
 }
 
-func getLatestVersion(versions []string) string {
+func getLatestVersion(versions []string) (string, error) {
 	if len(versions) == 0 {
-		return ""
+		return "", nil
 	}
 
-	// init max with the zero index element
-	maxVersion := versions[0]
-	// ignore err
-	maxVersionParts, _ := parseVersion(maxVersion)
+	maxVersion := ""
+	var maxVersionParts []int
 
-	// compare all versions
-	for _, version := range versions[1:] {
-		// ignore err
-		versionParts, _ := parseVersion(version)
+	for _, version := range versions {
+		versionParts, err := parseVersion(version)
+		if err != nil {
+			log.Printf("[WARN] Skipping invalid version %q: %v", version, err)
+			continue
+		}
 
-		if compareVersions(versionParts, maxVersionParts) > 0 {
+		if maxVersionParts == nil || compareVersions(versionParts, maxVersionParts) > 0 {
 			maxVersion = version
 			maxVersionParts = versionParts
 		}
 	}
 
-	return maxVersion
+	if maxVersion == "" {
+		return "", fmt.Errorf("%w: %v", errFailedToGetLatestVersion, versions)
+	}
+
+	return maxVersion, nil
 }
