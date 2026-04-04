@@ -31,7 +31,7 @@ func TestCreateIstioResources(t *testing.T) {
 	require.NoError(t, err)
 
 	// test target
-	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName)
+	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName, nil)
 	assert.NoError(t, err)
 
 	// verify
@@ -65,7 +65,7 @@ func TestDeleteIstioResources(t *testing.T) {
 	require.NoError(t, err)
 
 	// test target
-	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName)
+	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName, nil)
 	assert.NoError(t, err)
 
 	// skip verify to reduce test time

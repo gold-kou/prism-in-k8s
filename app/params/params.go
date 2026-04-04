@@ -51,6 +51,7 @@ var (
 	NodeAffinityMatchExpressions []NodeAffinityMatchExpression
 	PodAntiAffinityTopologyKey   string
 	EcrTags                      []ECRTag
+	VirtualServiceRoutes         []VirtualServiceRoute
 )
 
 type Config struct {
@@ -68,6 +69,15 @@ type Config struct {
 	NodeAffinityMatchExpressions []NodeAffinityMatchExpression `yaml:"nodeAffinity"`
 	PodAntiAffinityTopologyKey   string                       `yaml:"podAntiAffinityTopologyKey"`
 	EcrTags                      []ECRTag                     `yaml:"ecrTags"`
+	VirtualServiceRoutes         []VirtualServiceRoute        `yaml:"virtualServiceRoutes"`
+}
+
+type VirtualServiceRoute struct {
+	Name       string `yaml:"name"`
+	URIPrefix  string `yaml:"uriPrefix"`
+	Method     string `yaml:"method"`
+	DelayNanos int32  `yaml:"delayNanos"`
+	DelayPercentage float64 `yaml:"delayPercentage"`
 }
 
 type NodeAffinityMatchExpression struct {
@@ -129,6 +139,7 @@ func init() {
 	NodeAffinityMatchExpressions = config.NodeAffinityMatchExpressions
 	PodAntiAffinityTopologyKey = config.PodAntiAffinityTopologyKey
 	EcrTags = config.EcrTags
+	VirtualServiceRoutes = config.VirtualServiceRoutes
 }
 
 func LoadConfig(filename string) (*Config, error) {
