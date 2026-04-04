@@ -3,7 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -96,9 +96,9 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 		if !errors.IsAlreadyExists(err) {
 			return xerrors.Errorf("%w: %w", errFailedToCreateNameSpace, err)
 		}
-		log.Println("[WARN] The namespace already exists")
+		slog.Warn("The namespace already exists")
 	} else {
-		log.Println("[INFO] Namespace is created successfully")
+		slog.Info("Namespace is created successfully")
 	}
 	return nil
 }
@@ -173,9 +173,9 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 		if !errors.IsAlreadyExists(err) {
 			return xerrors.Errorf("%w: %w", errFailedToCreateDeployment, err)
 		}
-		log.Println("[WARN] The deployment already exists")
+		slog.Warn("The deployment already exists")
 	} else {
-		log.Println("[INFO] Deployment is created successfully")
+		slog.Info("Deployment is created successfully")
 	}
 	return nil
 }
@@ -256,9 +256,9 @@ func createService(ctx context.Context, k8sClientSet *kubernetes.Clientset, name
 		if !errors.IsAlreadyExists(err) {
 			return xerrors.Errorf("%w: %w", errFailedToCreateService, err)
 		}
-		log.Println("[WARN] The service already exists")
+		slog.Warn("The service already exists")
 	} else {
-		log.Println("[INFO] Service is created successfully")
+		slog.Info("Service is created successfully")
 	}
 	return nil
 }
@@ -268,7 +268,7 @@ func DeleteK8sResources(ctx context.Context, kubeconfig *restclient.Config, name
 	if err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToCreateClientSet, err)
 	}
-	log.Println("[INFO] Clientset of k8s set up successfully")
+	slog.Info("Clientset of k8s set up successfully")
 
 	err = deleteService(ctx, k8sClientSet, namespaceName, resourceName)
 	if err != nil {
@@ -294,9 +294,9 @@ func deleteService(ctx context.Context, k8sClientSet *kubernetes.Clientset, name
 		if !errors.IsNotFound(err) {
 			return xerrors.Errorf("%w: %w", errFailedToDeleteService, err)
 		}
-		log.Println("[WARN] The service is not found")
+		slog.Warn("The service is not found")
 	} else {
-		log.Println("[INFO] Service is deleted successfully")
+		slog.Info("Service is deleted successfully")
 	}
 	return nil
 }
@@ -307,9 +307,9 @@ func deleteDeployment(ctx context.Context, k8sClientSet *kubernetes.Clientset, n
 		if !errors.IsNotFound(err) {
 			return xerrors.Errorf("%w: %w", errFailedToDeleteDeployment, err)
 		}
-		log.Println("[WARN] The Deployment is not found")
+		slog.Warn("The Deployment is not found")
 	} else {
-		log.Println("[INFO] Deployment is deleted successfully")
+		slog.Info("Deployment is deleted successfully")
 	}
 	return nil
 }
@@ -320,9 +320,9 @@ func deleteNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 		if !errors.IsNotFound(err) {
 			return xerrors.Errorf("%w: %w", errFailedToDeleteNameSpace, err)
 		}
-		log.Println("[WARN] The Namespace is not found")
+		slog.Warn("The Namespace is not found")
 	} else {
-		log.Println("[INFO] Namespace is deleted successfully")
+		slog.Info("Namespace is deleted successfully")
 	}
 	return nil
 }
