@@ -37,6 +37,7 @@ var (
 	errFailedToDeleteService    = errors.New("failed to delete service")
 	errFailedToListPods         = errors.New("failed to list pods")
 	errFailedToGetLatestVersion = errors.New("failed to get latest version")
+	errNoValidVersionFound      = errors.New("no valid version found")
 )
 
 func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, isTest bool) error {
@@ -84,9 +85,9 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 		for _, item := range podList.Items {
 			hyphenedVersions = append(hyphenedVersions, item.ObjectMeta.Labels["istio.io/rev"])
 		}
-		latestVersion := getLatestVersion(hyphenedVersions)
+		latestVersion, err := getLatestVersion(hyphenedVersions)
 		if err != nil {
-			return xerrors.Errorf("%w: %w", errFailedToGetLatestVersion, err)
+			return fmt.Errorf("%w: %w", errFailedToGetLatestVersion, err)
 		}
 		namespace.ObjectMeta.Labels["istio.io/rev"] = latestVersion
 	}
@@ -361,26 +362,40 @@ func compareVersions(v1, v2 []int) int {
 	return 0
 }
 
-func getLatestVersion(versions []string) string {
+// return the latest version of label value of istio.io/rev
+func getLatestVersion(versions []string) (string, error) {
 	if len(versions) == 0 {
-		return ""
+		return "", nil
 	}
 
-	// init max with the zero index element
-	maxVersion := versions[0]
-	// ignore err
-	maxVersionParts, _ := parseVersion(maxVersion)
+	maxVersion := ""
+	var maxVersionParts []int
+	var nonVersionRevision string
 
-	// compare all versions
-	for _, version := range versions[1:] {
-		// ignore err
-		versionParts, _ := parseVersion(version)
+	for _, version := range versions {
+		versionParts, err := parseVersion(version)
+		if err != nil {
+			// Non-version revision names like "default" are valid Istio revisions
+			log.Printf("[WARN] Non-version revision %q found, treating as valid revision", version)
+			if nonVersionRevision == "" {
+				nonVersionRevision = version
+			}
+			continue
+		}
 
-		if compareVersions(versionParts, maxVersionParts) > 0 {
+		if maxVersionParts == nil || compareVersions(versionParts, maxVersionParts) > 0 {
 			maxVersion = version
 			maxVersionParts = versionParts
 		}
 	}
 
-	return maxVersion
+	// Prefer versioned revisions over non-version ones
+	if maxVersion != "" {
+		return maxVersion, nil
+	}
+	if nonVersionRevision != "" {
+		return nonVersionRevision, nil
+	}
+
+	return "", fmt.Errorf("%w: %v", errNoValidVersionFound, versions)
 }
