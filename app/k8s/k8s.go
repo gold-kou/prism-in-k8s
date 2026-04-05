@@ -362,6 +362,7 @@ func compareVersions(v1, v2 []int) int {
 	return 0
 }
 
+// return the latest version of istio in kubernetes cluster
 func getLatestVersion(versions []string) (string, error) {
 	if len(versions) == 0 {
 		return "", nil
@@ -369,11 +370,16 @@ func getLatestVersion(versions []string) (string, error) {
 
 	maxVersion := ""
 	var maxVersionParts []int
+	var nonVersionRevision string
 
 	for _, version := range versions {
 		versionParts, err := parseVersion(version)
 		if err != nil {
-			log.Printf("[WARN] Skipping invalid version %q: %v", version, err)
+			// Non-version revision names like "default" are valid Istio revisions
+			log.Printf("[WARN] Non-version revision %q found, treating as valid revision", version)
+			if nonVersionRevision == "" {
+				nonVersionRevision = version
+			}
 			continue
 		}
 
@@ -383,9 +389,13 @@ func getLatestVersion(versions []string) (string, error) {
 		}
 	}
 
-	if maxVersion == "" {
-		return "", fmt.Errorf("%w: %v", errNoValidVersionFound, versions)
+	// Prefer versioned revisions over non-version ones
+	if maxVersion != "" {
+		return maxVersion, nil
+	}
+	if nonVersionRevision != "" {
+		return nonVersionRevision, nil
 	}
 
-	return maxVersion, nil
+	return "", fmt.Errorf("%w: %v", errNoValidVersionFound, versions)
 }
