@@ -362,7 +362,7 @@ func compareVersions(v1, v2 []int) int {
 	return 0
 }
 
-// return the latest version of istio in kubernetes cluster
+// return the latest version of label value of istio.io/rev
 func getLatestVersion(versions []string) (string, error) {
 	if len(versions) == 0 {
 		return "", nil
