@@ -17,6 +17,10 @@ const (
 	defaultIstioProxyCPU       = "500m"
 	defaultIstioProxyMemory    = "512Mi"
 	defaultDockerBuildPlatform = "linux/amd64"
+	defaultKedaCronTimezone    = "Asia/Tokyo"
+	defaultKedaCronStart       = "0 9 * * 1-5"
+	defaultKedaCronEnd         = "0 21 * * 1-5"
+	defaultKedaDesiredReplicas = "1"
 	maxDelayPercentage         = 100.0
 )
 
@@ -53,6 +57,11 @@ type Config struct {
 	EcrTags                      []ECRTag                      `yaml:"ecrTags"`
 	VirtualServiceRoutes         []VirtualServiceRoute         `yaml:"virtualServiceRoutes"`
 	DockerBuildPlatform          string                        `yaml:"dockerBuildPlatform"`
+	KedaMode                     bool                          `yaml:"kedaMode"`
+	KedaCronTimezone             string                        `yaml:"kedaCronTimezone"`
+	KedaCronStart                string                        `yaml:"kedaCronStart"`
+	KedaCronEnd                  string                        `yaml:"kedaCronEnd"`
+	KedaDesiredReplicas          string                        `yaml:"kedaDesiredReplicas"`
 }
 
 type VirtualServiceRoute struct {
@@ -113,6 +122,18 @@ func (c *Config) ApplyDefaults() {
 	}
 	if c.DockerBuildPlatform == "" {
 		c.DockerBuildPlatform = defaultDockerBuildPlatform
+	}
+	if c.KedaCronTimezone == "" {
+		c.KedaCronTimezone = defaultKedaCronTimezone
+	}
+	if c.KedaCronStart == "" {
+		c.KedaCronStart = defaultKedaCronStart
+	}
+	if c.KedaCronEnd == "" {
+		c.KedaCronEnd = defaultKedaCronEnd
+	}
+	if c.KedaDesiredReplicas == "" {
+		c.KedaDesiredReplicas = defaultKedaDesiredReplicas
 	}
 }
 
