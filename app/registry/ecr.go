@@ -28,7 +28,7 @@ var (
 func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, resourceName string) error {
 	// build Docker image
 	imageTag := params.MicroserviceName + ":v1"
-	cmd := exec.Command("docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.prism", "-t", imageTag, ".")
+	cmd := exec.CommandContext(ctx, "docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.prism", "-t", imageTag, ".")
 	if err := cmd.Run(); err != nil {
 		return xerrors.Errorf("%s: %v", errFailedToBuildDockerImage, err)
 	}
@@ -65,7 +65,7 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 
 	// tag Docker image for ECR
 	ecrImageTag := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:latest", awsAccountID, awsConfig.Region, repositoryName)
-	cmdTag := exec.Command("docker", "tag", imageTag, ecrImageTag)
+	cmdTag := exec.CommandContext(ctx, "docker", "tag", imageTag, ecrImageTag)
 	if err := cmdTag.Run(); err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToTagImage, err)
 	}
@@ -79,7 +79,7 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 	log.Println("[INFO] Logged in ECR successfully")
 
 	// push image to ECR
-	cmdPush := exec.Command("docker", "push", ecrImageTag)
+	cmdPush := exec.CommandContext(ctx, "docker", "push", ecrImageTag)
 	if err := cmdPush.Run(); err != nil {
 		return xerrors.Errorf("%w: %w", errFailedToPushImage, err)
 	}
@@ -118,7 +118,7 @@ func loginToECR(ctx context.Context, awsConfig aws.Config, awsAccountID string) 
 	password := parts[1]
 	registry := *authData.ProxyEndpoint
 
-	loginCmd := exec.Command("docker", "login", "--username", username, "--password-stdin", registry)
+	loginCmd := exec.CommandContext(ctx, "docker", "login", "--username", username, "--password-stdin", registry)
 	loginCmd.Stdin = strings.NewReader(password)
 	output, err := loginCmd.CombinedOutput()
 	if err != nil {
