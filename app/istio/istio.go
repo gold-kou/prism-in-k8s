@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/golang/protobuf/ptypes/duration"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"github.com/pingcap/errors"
 	"golang.org/x/xerrors"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
@@ -64,7 +64,7 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 								Value: defaultDelayPercentage,
 							},
 							HttpDelayType: &networkingv1alpha3.HTTPFaultInjection_Delay_FixedDelay{
-								FixedDelay: &duration.Duration{Nanos: int32(defaultDelayNanos)}, // 100ms
+								FixedDelay: &durationpb.Duration{Nanos: int32(defaultDelayNanos)}, // 100ms
 							},
 						},
 					},
