@@ -1,6 +1,7 @@
 package params
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -193,6 +194,10 @@ func ValidateParams() error {
 		if !validNodeSelectorOperators[expr.Operator] {
 			return fmt.Errorf("invalid node selector operator: %s", expr.Operator)
 		}
+	}
+
+	if len(VirtualServiceRoutes) > 0 && !IstioMode {
+		return errors.New("virtualServiceRoutes can only be set when istioMode is true")
 	}
 
 	for i, route := range VirtualServiceRoutes {
