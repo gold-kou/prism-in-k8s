@@ -2,15 +2,15 @@ package istio
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 
-	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/gold-kou/prism-in-k8s/app/params"
-	"github.com/pingcap/errors"
-	"golang.org/x/xerrors"
+	"google.golang.org/protobuf/types/known/durationpb"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"istio.io/client-go/pkg/clientset/versioned"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	restclient "k8s.io/client-go/rest"
 )
@@ -20,17 +20,11 @@ const (
 	defaultDelayPercentage = 100.0     // 100%
 )
 
-var (
-	errFailedToCreateIstioClient    = errors.New("failed to create Istio client")
-	errFailedToCreateVirtualService = errors.New("failed to create VirtualService")
-	errFailedToDeleteVirtualService = errors.New("failed to delete VirtualService")
-)
-
 func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string, routes []params.VirtualServiceRoute) error {
 	// Istio clientset
 	istioClientSet, err := versioned.NewForConfig(kubeconfig)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToCreateIstioClient, err)
+		return fmt.Errorf("failed to create Istio client: %w", err)
 	}
 
 	host := resourceName + "." + namespaceName + ".svc.cluster.local"
@@ -48,12 +42,12 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 	}
 	_, err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Create(ctx, virtualService, metav1.CreateOptions{})
 	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			return xerrors.Errorf("%w: %w", errFailedToCreateVirtualService, err)
+		if !apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("failed to create VirtualService: %w", err)
 		}
-		log.Println("[WARN] The VirtualService already exists")
+		slog.Warn("The VirtualService already exists")
 	} else {
-		log.Println("[INFO] VirtualService is created successfully")
+		slog.Info("VirtualService is created successfully")
 	}
 	return nil
 }
@@ -84,7 +78,7 @@ func buildHTTPRoutes(host string, routes []params.VirtualServiceRoute) []*networ
 							Value: defaultDelayPercentage,
 						},
 						HttpDelayType: &networkingv1alpha3.HTTPFaultInjection_Delay_FixedDelay{
-							FixedDelay: &duration.Duration{Nanos: defaultDelayNanos},
+							FixedDelay: &durationpb.Duration{Nanos: int32(defaultDelayNanos)},
 						},
 					},
 				},
@@ -93,7 +87,7 @@ func buildHTTPRoutes(host string, routes []params.VirtualServiceRoute) []*networ
 				},
 			},
 			{
-				Name:  "default",
+				Name: "default",
 				Route: []*networkingv1alpha3.HTTPRouteDestination{
 					{Destination: &networkingv1alpha3.Destination{Host: host}},
 				},
@@ -134,7 +128,7 @@ func buildHTTPRoutes(host string, routes []params.VirtualServiceRoute) []*networ
 				Delay: &networkingv1alpha3.HTTPFaultInjection_Delay{
 					Percentage: &networkingv1alpha3.Percent{Value: percentage},
 					HttpDelayType: &networkingv1alpha3.HTTPFaultInjection_Delay_FixedDelay{
-						FixedDelay: &duration.Duration{Nanos: route.DelayNanos},
+						FixedDelay: &durationpb.Duration{Nanos: route.DelayNanos},
 					},
 				},
 			}
@@ -145,7 +139,7 @@ func buildHTTPRoutes(host string, routes []params.VirtualServiceRoute) []*networ
 
 	// always add default catch-all route
 	httpRoutes = append(httpRoutes, &networkingv1alpha3.HTTPRoute{
-		Name:  "default",
+		Name: "default",
 		Route: []*networkingv1alpha3.HTTPRouteDestination{
 			{Destination: &networkingv1alpha3.Destination{Host: host}},
 		},
@@ -158,18 +152,18 @@ func DeleteIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 	// Istio clientset
 	istioClientSet, err := versioned.NewForConfig(kubeconfig)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToCreateIstioClient, err)
+		return fmt.Errorf("failed to create Istio client: %w", err)
 	}
-	log.Println("[INFO] Clientset of istio set up successfully")
+	slog.Info("Clientset of istio set up successfully")
 
 	err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return xerrors.Errorf("%w: %w", errFailedToDeleteVirtualService, err)
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to delete VirtualService: %w", err)
 		}
-		log.Println("[WARN] The VirtualService is not found")
+		slog.Warn("The VirtualService is not found")
 	} else {
-		log.Println("[INFO] VirtualService is deleted successfully")
+		slog.Info("VirtualService is deleted successfully")
 	}
 	return nil
 }

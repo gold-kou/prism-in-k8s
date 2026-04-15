@@ -3,7 +3,8 @@ package app
 import (
 	"context"
 	"flag"
-	"log"
+	"fmt"
+	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -12,7 +13,6 @@ import (
 	"github.com/gold-kou/prism-in-k8s/app/k8s"
 	"github.com/gold-kou/prism-in-k8s/app/params"
 	"github.com/gold-kou/prism-in-k8s/app/registry"
-	"golang.org/x/xerrors"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -45,14 +45,14 @@ func init() {
 		// AWS config
 		awsConfig, err = config.LoadDefaultConfig(context.Background())
 		if err != nil {
-			panic(xerrors.Errorf("failed load AWS config: %v", err))
+			panic(fmt.Errorf("failed to load AWS config: %w", err))
 		}
 
 		// get AWS account ID
 		stsClient := sts.NewFromConfig(awsConfig)
 		result, err := stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
 		if err != nil {
-			panic(xerrors.Errorf("failed to get caller identity: %v", err))
+			panic(fmt.Errorf("failed to get caller identity: %w", err))
 		}
 		awsAccountID = *result.Account
 	}
@@ -61,7 +61,7 @@ func init() {
 	kubeconfigPath := clientcmd.NewDefaultPathOptions().GetDefaultFilename()
 	kubeConfig, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 	if err != nil {
-		panic(xerrors.Errorf("failed to build Kubeconfig: %v", err))
+		panic(fmt.Errorf("failed to build Kubeconfig: %w", err))
 	}
 
 	// resource name
@@ -96,7 +96,7 @@ func Run() {
 				panic(err)
 			}
 		}
-		log.Println("[INFO] All resources for prism mock are created successfully")
+		slog.Info("All resources for prism mock are created successfully")
 	} else if isDelete {
 		if params.IstioMode {
 			err := istio.DeleteIstioResources(ctx, kubeConfig, namespaceName, resourceName)
@@ -114,6 +114,6 @@ func Run() {
 		if err != nil {
 			panic(err)
 		}
-		log.Println("[INFO] All resources for prism mock are deleted successfully")
+		slog.Info("All resources for prism mock are deleted successfully")
 	}
 }

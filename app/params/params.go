@@ -1,13 +1,11 @@
 package params
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -16,17 +14,9 @@ const (
 	defaultPrismPort        = 80
 	defaultPrismCPU         = "500m"
 	defaultPrismMemory      = "512Mi"
-	defaultIstioMode        = true
+	defaultIstioMode        = false
 	defaultIstioProxyCPU    = "500m"
 	defaultIstioProxyMemory = "512Mi"
-)
-
-var (
-	errEmptyParameter                = errors.New("empty parameter found")
-	errUnsupportedParameterType      = errors.New("unsupported parameter type")
-	errFailedToOpenConfigFile        = errors.New("failed to open config file")
-	errFailedToDecodeConfigFile      = errors.New("failed to decode config file")
-	errInvalidNodeSelectorOperator   = errors.New("invalid node selector operator")
 )
 
 var validNodeSelectorOperators = map[string]bool{
@@ -123,7 +113,7 @@ func init() {
 	if config.PrismMemory != "" {
 		PrismMemory = config.PrismMemory
 	}
-	IstioMode = false
+	IstioMode = defaultIstioMode
 	if config.IstioMode {
 		IstioMode = config.IstioMode
 	}
@@ -145,14 +135,14 @@ func init() {
 func LoadConfig(filename string) (*Config, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errFailedToOpenConfigFile, err)
+		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
 	defer file.Close()
 
 	var config Config
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&config); err != nil {
-		return nil, fmt.Errorf("%w: %w", errFailedToDecodeConfigFile, err)
+		return nil, fmt.Errorf("failed to decode config file: %w", err)
 	}
 
 	return &config, nil
@@ -175,24 +165,24 @@ func ValidateParams() error {
 		switch v := value.(type) {
 		case string:
 			if v == "" {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("empty parameter found: %s", name)
 			}
 		case int:
 			if v == 0 {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("empty parameter found: %s", name)
 			}
 		case time.Duration:
 			if v == 0*time.Millisecond {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("empty parameter found: %s", name)
 			}
 		default:
-			return xerrors.Errorf("%w: %s", errUnsupportedParameterType, name)
+			return fmt.Errorf("unsupported parameter type: %s", name)
 		}
 	}
 
 	for _, expr := range NodeAffinityMatchExpressions {
 		if !validNodeSelectorOperators[expr.Operator] {
-			return xerrors.Errorf("%w: %s", errInvalidNodeSelectorOperator, expr.Operator)
+			return fmt.Errorf("invalid node selector operator: %s", expr.Operator)
 		}
 	}
 
