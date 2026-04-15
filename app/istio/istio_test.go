@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gold-kou/prism-in-k8s/app/istio"
+	"github.com/gold-kou/prism-in-k8s/app/params"
 	"github.com/gold-kou/prism-in-k8s/app/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -32,14 +33,40 @@ func TestCreateIstioResources(t *testing.T) {
 	require.NoError(t, err)
 
 	// test target
-	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName, nil)
+	routes := []params.VirtualServiceRoute{
+		{
+			Name:            "example1",
+			URIPrefix:       "/example1/",
+			Method:          "GET",
+			DelayNanos:      100000000,
+			DelayPercentage: 100,
+		},
+		{
+			Name:      "example2",
+			URIPrefix: "/example2/",
+			Method:    "POST",
+		},
+	}
+	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName, routes)
 	assert.NoError(t, err)
 
 	// verify
 	istioClient, err := versioned.NewForConfig(kubeconfig)
 	assert.NoError(t, err)
-	_, err = istioClient.NetworkingV1alpha3().VirtualServices(testNamespaceName).Get(ctx, testResourceName, metav1.GetOptions{})
+	vs, err := istioClient.NetworkingV1alpha3().VirtualServices(testNamespaceName).Get(ctx, testResourceName, metav1.GetOptions{})
 	assert.NoError(t, err)
+	// verify configured routes + trailing default catch-all
+	require.Len(t, vs.Spec.Http, 3)
+	assert.Equal(t, "example1", vs.Spec.Http[0].Name)
+	assert.Equal(t, "/example1/", vs.Spec.Http[0].Match[0].Uri.GetPrefix())
+	assert.Equal(t, "GET", vs.Spec.Http[0].Match[0].Method.GetExact())
+	assert.Equal(t, int32(100000000), vs.Spec.Http[0].Fault.Delay.GetFixedDelay().Nanos)
+	assert.InDelta(t, 100.0, vs.Spec.Http[0].Fault.Delay.Percentage.Value, 0.001)
+	assert.Equal(t, "example2", vs.Spec.Http[1].Name)
+	assert.Equal(t, "/example2/", vs.Spec.Http[1].Match[0].Uri.GetPrefix())
+	assert.Equal(t, "POST", vs.Spec.Http[1].Match[0].Method.GetExact())
+	assert.Nil(t, vs.Spec.Http[1].Fault)
+	assert.Equal(t, "default", vs.Spec.Http[2].Name)
 
 	// clean up
 	err = testutil.DeleteNamespace(ctx, k8sClientSet, testNamespaceName)

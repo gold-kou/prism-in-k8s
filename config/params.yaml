@@ -1,6 +1,7 @@
 microserviceName: "sample"
 microserviceNamespace: "sample"
 prismMockSuffix: "-prism-mock"
+# istioMode: true
 # virtualServiceRoutes:
 #   - name: "example1"
 #     uriPrefix: "/example1/"

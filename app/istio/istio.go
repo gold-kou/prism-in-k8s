@@ -53,8 +53,8 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 }
 
 func buildHTTPRoutes(host string, routes []params.VirtualServiceRoute) []*networkingv1alpha3.HTTPRoute {
+	// if route parameters are empty, default behavior
 	if len(routes) == 0 {
-		// default behavior: same as previous hardcoded routes
 		return []*networkingv1alpha3.HTTPRoute{
 			{
 				Name: "example1",
