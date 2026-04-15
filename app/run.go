@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -96,7 +96,7 @@ func Run() {
 				panic(err)
 			}
 		}
-		log.Println("[INFO] All resources for prism mock are created successfully")
+		slog.Info("All resources for prism mock are created successfully")
 	} else if isDelete {
 		if params.IstioMode {
 			err := istio.DeleteIstioResources(ctx, kubeConfig, namespaceName, resourceName)
@@ -114,6 +114,6 @@ func Run() {
 		if err != nil {
 			panic(err)
 		}
-		log.Println("[INFO] All resources for prism mock are deleted successfully")
+		slog.Info("All resources for prism mock are deleted successfully")
 	}
 }

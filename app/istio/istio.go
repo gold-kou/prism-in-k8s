@@ -3,7 +3,7 @@ package istio
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"google.golang.org/protobuf/types/known/durationpb"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
@@ -88,9 +88,9 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 		if !apierrors.IsAlreadyExists(err) {
 			return fmt.Errorf("failed to create VirtualService: %w", err)
 		}
-		log.Println("[WARN] The VirtualService already exists")
+		slog.Warn("The VirtualService already exists")
 	} else {
-		log.Println("[INFO] VirtualService is created successfully")
+		slog.Info("VirtualService is created successfully")
 	}
 	return nil
 }
@@ -101,16 +101,16 @@ func DeleteIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 	if err != nil {
 		return fmt.Errorf("failed to create Istio client: %w", err)
 	}
-	log.Println("[INFO] Clientset of istio set up successfully")
+	slog.Info("Clientset of istio set up successfully")
 
 	err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete VirtualService: %w", err)
 		}
-		log.Println("[WARN] The VirtualService is not found")
+		slog.Warn("The VirtualService is not found")
 	} else {
-		log.Println("[INFO] VirtualService is deleted successfully")
+		slog.Info("VirtualService is deleted successfully")
 	}
 	return nil
 }

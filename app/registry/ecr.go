@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os/exec"
 	"strings"
 
@@ -22,7 +22,7 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to build docker image: %w", err)
 	}
-	log.Println("[INFO] Docker image is built successfully")
+	slog.Info("Docker image is built successfully")
 
 	// ECR tags
 	tags := []types.Tag{}
@@ -48,9 +48,9 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 		if !errors.As(err, &ecrExistsException) {
 			return fmt.Errorf("failed to create ECR repository: %w", err)
 		}
-		log.Println("[WARN] The ECR already exists")
+		slog.Warn("The ECR already exists")
 	} else {
-		log.Println("[INFO] ECR is created successfully")
+		slog.Info("ECR is created successfully")
 	}
 
 	// tag Docker image for ECR
@@ -59,21 +59,21 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 	if err := cmdTag.Run(); err != nil {
 		return fmt.Errorf("failed to tag image: %w", err)
 	}
-	log.Println("[INFO] Docker image tagged successfully")
+	slog.Info("Docker image tagged successfully")
 
 	// login to ECR
 	err = loginToECR(ctx, awsConfig, awsAccountID)
 	if err != nil {
 		return fmt.Errorf("failed to log in ECR: %w", err)
 	}
-	log.Println("[INFO] Logged in ECR successfully")
+	slog.Info("Logged in ECR successfully")
 
 	// push image to ECR
 	cmdPush := exec.CommandContext(ctx, "docker", "push", ecrImageTag)
 	if err := cmdPush.Run(); err != nil {
 		return fmt.Errorf("failed to push image to ECR: %w", err)
 	}
-	log.Println("[INFO] Docker image is pushed to ECR successfully")
+	slog.Info("Docker image is pushed to ECR successfully")
 	return nil
 }
 
@@ -132,9 +132,9 @@ func DeleteECR(ctx context.Context, awsConfig aws.Config, resourceName string) e
 		if !errors.As(err, &ecrNotFoundException) {
 			return fmt.Errorf("failed to delete ECR repository: %w", err)
 		}
-		log.Println("[WARN] The ECR is not found")
+		slog.Warn("The ECR is not found")
 	} else {
-		log.Println("[INFO] ECR is deleted successfully")
+		slog.Info("ECR is deleted successfully")
 	}
 	return nil
 }
