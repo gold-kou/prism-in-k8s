@@ -5,20 +5,21 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gold-kou/prism-in-k8s/app/params"
-	"k8s.io/utils/ptr"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"istio.io/client-go/pkg/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/ptr"
 )
 
-const servicePort = 80
+const (
+	localPrismImage = "my-local-image:v1"
+	servicePort     = 80
+)
 
 var errNotRunning = errors.New("pod did not reach Running state")
 
@@ -29,10 +30,7 @@ func CreateNamespace(ctx context.Context, clientset *kubernetes.Clientset, names
 		},
 	}
 	_, err := clientset.CoreV1().Namespaces().Create(ctx, n, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func CreateDeployment(ctx context.Context, clientset *kubernetes.Clientset, namespace, name string) error {
@@ -43,38 +41,19 @@ func CreateDeployment(ctx context.Context, clientset *kubernetes.Clientset, name
 		Spec: appsv1.DeploymentSpec{
 			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": name,
-				},
+				MatchLabels: map[string]string{"app": name},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": name,
-					},
-					Annotations: map[string]string{
-						"sidecar.istio.io/inject":                          "true",
-						"sidecar.istio.io/proxyCPULimit":                   params.IstioProxyCPU,
-						"sidecar.istio.io/proxyMemoryLimit":                params.IstioProxyMemory,
-						"traffic.sidecar.istio.io/includeOutboundIPRanges": "*",
-						"proxy.istio.io/config":                            `{ "terminationDrainDuration": "30s" }`,
-					},
+					Labels: map[string]string{"app": name},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
 							Name:  name,
-							Image: "my-local-image:v1",
+							Image: localPrismImage,
 							Ports: []corev1.ContainerPort{
-								{
-									ContainerPort: int32(params.PrismPort),
-								},
-							},
-							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(params.PrismCPU),
-									corev1.ResourceMemory: resource.MustParse(params.PrismMemory),
-								},
+								{ContainerPort: servicePort},
 							},
 						},
 					},
@@ -83,10 +62,7 @@ func CreateDeployment(ctx context.Context, clientset *kubernetes.Clientset, name
 		},
 	}
 	_, err := clientset.AppsV1().Deployments(namespace).Create(ctx, deployment, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func CreateService(ctx context.Context, clientset *kubernetes.Clientset, namespace, name string) error {
@@ -95,9 +71,7 @@ func CreateService(ctx context.Context, clientset *kubernetes.Clientset, namespa
 			Name: name,
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				"app": name,
-			},
+			Selector: map[string]string{"app": name},
 			Ports: []corev1.ServicePort{
 				{
 					Protocol:   corev1.ProtocolTCP,
@@ -109,10 +83,7 @@ func CreateService(ctx context.Context, clientset *kubernetes.Clientset, namespa
 		},
 	}
 	_, err := clientset.CoreV1().Services(namespace).Create(ctx, service, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func CreateVirtualService(ctx context.Context, istioClientSet *versioned.Clientset, namespace, name string) error {
@@ -139,34 +110,19 @@ func CreateVirtualService(ctx context.Context, istioClientSet *versioned.Clients
 		},
 	}
 	_, err := istioClientSet.NetworkingV1alpha3().VirtualServices(namespace).Create(ctx, virtualService, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func DeleteNamespace(ctx context.Context, clientset *kubernetes.Clientset, namespace string) error {
-	err := clientset.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
+	return clientset.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 }
 
 func DeleteDeployment(ctx context.Context, clientset *kubernetes.Clientset, namespace, name string) error {
-	err := clientset.AppsV1().Deployments(namespace).Delete(ctx, name, metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
+	return clientset.AppsV1().Deployments(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
 func DeleteService(ctx context.Context, clientset *kubernetes.Clientset, namespace, name string) error {
-	err := clientset.CoreV1().Services(namespace).Delete(ctx, name, metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
+	return clientset.CoreV1().Services(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
 func WaitForPodRunning(ctx context.Context, clientset *kubernetes.Clientset, namespace, resourceName string) error {
