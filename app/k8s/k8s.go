@@ -38,6 +38,8 @@ var (
 	errFailedToListPods         = errors.New("failed to list pods")
 	errFailedToGetLatestVersion = errors.New("failed to get latest version")
 	errNoValidVersionFound      = errors.New("no valid version found")
+	errInvalidVersionFormat     = errors.New("invalid version format")
+	errInvalidNumberInVersion   = errors.New("invalid number in version")
 )
 
 func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, isTest bool) error {
@@ -334,14 +336,14 @@ func parseVersion(version string) ([]int, error) {
 	// convert "x-y-z" to [x, y, z]
 	parts := strings.Split(version, "-")
 	if len(parts) != versions {
-		return nil, fmt.Errorf("invalid version format: %s", version)
+		return nil, fmt.Errorf("%w: %s", errInvalidVersionFormat, version)
 	}
 
 	intParts := make([]int, len(parts))
 	for i, part := range parts {
 		num, err := strconv.Atoi(part)
 		if err != nil {
-			return nil, fmt.Errorf("invalid number in version: %s", part)
+			return nil, fmt.Errorf("%w: %s", errInvalidNumberInVersion, part)
 		}
 		intParts[i] = num
 	}
