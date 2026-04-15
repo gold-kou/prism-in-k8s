@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -164,24 +163,24 @@ func ValidateParams() error {
 		switch v := value.(type) {
 		case string:
 			if v == "" {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		case int:
 			if v == 0 {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		case time.Duration:
 			if v == 0*time.Millisecond {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		default:
-			return xerrors.Errorf("%w: %s", errUnsupportedParameterType, name)
+			return fmt.Errorf("%w: %s", errUnsupportedParameterType, name)
 		}
 	}
 
 	for _, expr := range NodeAffinityMatchExpressions {
 		if !validNodeSelectorOperators[expr.Operator] {
-			return xerrors.Errorf("%w: %s", errInvalidNodeSelectorOperator, expr.Operator)
+			return fmt.Errorf("%w: %s", errInvalidNodeSelectorOperator, expr.Operator)
 		}
 	}
 

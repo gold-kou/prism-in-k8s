@@ -8,9 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.30.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.1
 	github.com/google/uuid v1.6.0
-	github.com/pingcap/errors v0.11.4
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
 	google.golang.org/protobuf v1.35.1
 	gopkg.in/yaml.v2 v2.4.0
 	istio.io/api v1.22.3-0.20240703105953-437a88321a16
