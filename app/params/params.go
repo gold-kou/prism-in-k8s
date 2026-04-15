@@ -196,14 +196,23 @@ func ValidateParams() error {
 		}
 	}
 
+	return validateVirtualServiceRoutes()
+}
+
+func validateVirtualServiceRoutes() error {
 	if len(VirtualServiceRoutes) > 0 && !IstioMode {
 		return errors.New("virtualServiceRoutes can only be set when istioMode is true")
 	}
 
+	seenRouteNames := make(map[string]struct{}, len(VirtualServiceRoutes))
 	for i, route := range VirtualServiceRoutes {
 		if route.Name == "" {
 			return fmt.Errorf("empty parameter found: virtualServiceRoutes[%d].name", i)
 		}
+		if _, ok := seenRouteNames[route.Name]; ok {
+			return fmt.Errorf("duplicate virtualServiceRoutes name: %s", route.Name)
+		}
+		seenRouteNames[route.Name] = struct{}{}
 		if route.Method != "" && !validHTTPMethods[route.Method] {
 			return fmt.Errorf("virtualServiceRoutes[%d].method is invalid HTTP method: %s", i, route.Method)
 		}
