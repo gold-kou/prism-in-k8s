@@ -2,7 +2,6 @@ package istio
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 
@@ -20,17 +19,11 @@ const (
 	defaultDelayPercentage = 100.0     // 100%
 )
 
-var (
-	errFailedToCreateIstioClient    = errors.New("failed to create Istio client")
-	errFailedToCreateVirtualService = errors.New("failed to create VirtualService")
-	errFailedToDeleteVirtualService = errors.New("failed to delete VirtualService")
-)
-
 func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
 	// Istio clientset
 	istioClientSet, err := versioned.NewForConfig(kubeconfig)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errFailedToCreateIstioClient, err)
+		return fmt.Errorf("failed to create Istio client: %w", err)
 	}
 
 	// VirtualService
@@ -93,7 +86,7 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 	_, err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Create(ctx, virtualService, metav1.CreateOptions{})
 	if err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			return fmt.Errorf("%w: %w", errFailedToCreateVirtualService, err)
+			return fmt.Errorf("failed to create VirtualService: %w", err)
 		}
 		log.Println("[WARN] The VirtualService already exists")
 	} else {
@@ -106,14 +99,14 @@ func DeleteIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 	// Istio clientset
 	istioClientSet, err := versioned.NewForConfig(kubeconfig)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errFailedToCreateIstioClient, err)
+		return fmt.Errorf("failed to create Istio client: %w", err)
 	}
 	log.Println("[INFO] Clientset of istio set up successfully")
 
 	err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("%w: %w", errFailedToDeleteVirtualService, err)
+			return fmt.Errorf("failed to delete VirtualService: %w", err)
 		}
 		log.Println("[WARN] The VirtualService is not found")
 	} else {

@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -27,40 +26,25 @@ const (
 	servicePort     = 80
 )
 
-var (
-	errFailedToCreateClientSet  = errors.New("failed to create clientset")
-	errFailedToCreateNameSpace  = errors.New("failed to create namespace")
-	errFailedToCreateDeployment = errors.New("failed to create deployment")
-	errFailedToCreateService    = errors.New("failed to create service")
-	errFailedToDeleteNameSpace  = errors.New("failed to delete namespace")
-	errFailedToDeleteDeployment = errors.New("failed to delete deployment")
-	errFailedToDeleteService    = errors.New("failed to delete service")
-	errFailedToListPods         = errors.New("failed to list pods")
-	errFailedToGetLatestVersion = errors.New("failed to get latest version")
-	errNoValidVersionFound      = errors.New("no valid version found")
-	errInvalidVersionFormat     = errors.New("invalid version format")
-	errInvalidNumberInVersion   = errors.New("invalid number in version")
-)
-
 func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, isTest bool) error {
 	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errFailedToCreateClientSet, err)
+		return fmt.Errorf("failed to create clientset: %w", err)
 	}
 
 	err = createNamespace(ctx, k8sClientSet, namespaceName, istioMode)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errFailedToCreateNameSpace, err)
+		return fmt.Errorf("failed to create namespace: %w", err)
 	}
 
 	err = createDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, istioMode, isTest)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errFailedToCreateDeployment, err)
+		return fmt.Errorf("failed to create deployment: %w", err)
 	}
 
 	err = createService(ctx, k8sClientSet, namespaceName, resourceName)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errFailedToCreateService, err)
+		return fmt.Errorf("failed to create service: %w", err)
 	}
 
 	return nil
@@ -81,7 +65,7 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 			LabelSelector: "app=istiod",
 		})
 		if err != nil {
-			return fmt.Errorf("%w: %w", errFailedToListPods, err)
+			return fmt.Errorf("failed to list pods: %w", err)
 		}
 		hyphenedVersions := []string{}
 		for _, item := range podList.Items {
@@ -89,7 +73,7 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 		}
 		latestVersion, err := getLatestVersion(hyphenedVersions)
 		if err != nil {
-			return fmt.Errorf("%w: %w", errFailedToGetLatestVersion, err)
+			return fmt.Errorf("failed to get latest version: %w", err)
 		}
 		namespace.ObjectMeta.Labels["istio.io/rev"] = latestVersion
 	}
@@ -97,7 +81,7 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 	_, err := k8sClientSet.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 	if err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			return fmt.Errorf("%w: %w", errFailedToCreateNameSpace, err)
+			return fmt.Errorf("failed to create namespace: %w", err)
 		}
 		log.Println("[WARN] The namespace already exists")
 	} else {
@@ -174,7 +158,7 @@ func createDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Co
 	_, err := k8sClientSet.AppsV1().Deployments(namespaceName).Create(ctx, deployment, metav1.CreateOptions{})
 	if err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			return fmt.Errorf("%w: %w", errFailedToCreateDeployment, err)
+			return fmt.Errorf("failed to create deployment: %w", err)
 		}
 		log.Println("[WARN] The deployment already exists")
 	} else {
@@ -257,7 +241,7 @@ func createService(ctx context.Context, k8sClientSet *kubernetes.Clientset, name
 	_, err := k8sClientSet.CoreV1().Services(namespaceName).Create(ctx, service, metav1.CreateOptions{})
 	if err != nil {
 		if !apierrors.IsAlreadyExists(err) {
-			return fmt.Errorf("%w: %w", errFailedToCreateService, err)
+			return fmt.Errorf("failed to create service: %w", err)
 		}
 		log.Println("[WARN] The service already exists")
 	} else {
@@ -269,23 +253,23 @@ func createService(ctx context.Context, k8sClientSet *kubernetes.Clientset, name
 func DeleteK8sResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
 	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errFailedToCreateClientSet, err)
+		return fmt.Errorf("failed to create clientset: %w", err)
 	}
 	log.Println("[INFO] Clientset of k8s set up successfully")
 
 	err = deleteService(ctx, k8sClientSet, namespaceName, resourceName)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errFailedToDeleteService, err)
+		return fmt.Errorf("failed to delete service: %w", err)
 	}
 
 	err = deleteDeployment(ctx, k8sClientSet, namespaceName, resourceName)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errFailedToDeleteDeployment, err)
+		return fmt.Errorf("failed to delete deployment: %w", err)
 	}
 
 	err = deleteNamespace(ctx, k8sClientSet, namespaceName)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errFailedToDeleteNameSpace, err)
+		return fmt.Errorf("failed to delete namespace: %w", err)
 	}
 
 	return nil
@@ -295,7 +279,7 @@ func deleteService(ctx context.Context, k8sClientSet *kubernetes.Clientset, name
 	err := k8sClientSet.CoreV1().Services(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("%w: %w", errFailedToDeleteService, err)
+			return fmt.Errorf("failed to delete service: %w", err)
 		}
 		log.Println("[WARN] The service is not found")
 	} else {
@@ -308,7 +292,7 @@ func deleteDeployment(ctx context.Context, k8sClientSet *kubernetes.Clientset, n
 	err := k8sClientSet.AppsV1().Deployments(namespaceName).Delete(ctx, resourceName, metav1.DeleteOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("%w: %w", errFailedToDeleteDeployment, err)
+			return fmt.Errorf("failed to delete deployment: %w", err)
 		}
 		log.Println("[WARN] The Deployment is not found")
 	} else {
@@ -321,7 +305,7 @@ func deleteNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 	err := k8sClientSet.CoreV1().Namespaces().Delete(ctx, namespaceName, metav1.DeleteOptions{})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("%w: %w", errFailedToDeleteNameSpace, err)
+			return fmt.Errorf("failed to delete namespace: %w", err)
 		}
 		log.Println("[WARN] The Namespace is not found")
 	} else {
@@ -336,14 +320,14 @@ func parseVersion(version string) ([]int, error) {
 	// convert "x-y-z" to [x, y, z]
 	parts := strings.Split(version, "-")
 	if len(parts) != versions {
-		return nil, fmt.Errorf("%w: %s", errInvalidVersionFormat, version)
+		return nil, fmt.Errorf("invalid version format: %s", version)
 	}
 
 	intParts := make([]int, len(parts))
 	for i, part := range parts {
 		num, err := strconv.Atoi(part)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %s", errInvalidNumberInVersion, part)
+			return nil, fmt.Errorf("invalid number in version: %s", part)
 		}
 		intParts[i] = num
 	}
@@ -399,5 +383,5 @@ func getLatestVersion(versions []string) (string, error) {
 		return nonVersionRevision, nil
 	}
 
-	return "", fmt.Errorf("%w: %v", errNoValidVersionFound, versions)
+	return "", fmt.Errorf("no valid version found: %v", versions)
 }
