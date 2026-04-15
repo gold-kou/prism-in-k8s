@@ -32,19 +32,19 @@ func TestCreateIstioResources(t *testing.T) {
 	err = testutil.CreateNamespace(ctx, k8sClientSet, testNamespaceName)
 	require.NoError(t, err)
 
-	// test target
+	// test target: use non-default values to distinguish from TestCreateIstioResources_DefaultRoutes
 	routes := []params.VirtualServiceRoute{
 		{
-			Name:            "example1",
-			URIPrefix:       "/example1/",
-			Method:          "GET",
-			DelayNanos:      100000000,
-			DelayPercentage: 100,
+			Name:            "users-read",
+			URIPrefix:       "/api/v1/users/",
+			Method:          "PUT",
+			DelayNanos:      250000000,
+			DelayPercentage: 75,
 		},
 		{
-			Name:      "example2",
-			URIPrefix: "/example2/",
-			Method:    "POST",
+			Name:      "orders-create",
+			URIPrefix: "/api/v1/orders/",
+			Method:    "DELETE",
 		},
 	}
 	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName, routes)
@@ -58,14 +58,14 @@ func TestCreateIstioResources(t *testing.T) {
 	// verify configured routes + trailing default catch-all
 	httpRoutes := vs.Spec.GetHttp()
 	require.Len(t, httpRoutes, 3)
-	assert.Equal(t, "example1", httpRoutes[0].GetName())
-	assert.Equal(t, "/example1/", httpRoutes[0].GetMatch()[0].GetUri().GetPrefix())
-	assert.Equal(t, "GET", httpRoutes[0].GetMatch()[0].GetMethod().GetExact())
-	assert.Equal(t, int32(100000000), httpRoutes[0].GetFault().GetDelay().GetFixedDelay().GetNanos())
-	assert.InDelta(t, 100.0, httpRoutes[0].GetFault().GetDelay().GetPercentage().GetValue(), 0.001)
-	assert.Equal(t, "example2", httpRoutes[1].GetName())
-	assert.Equal(t, "/example2/", httpRoutes[1].GetMatch()[0].GetUri().GetPrefix())
-	assert.Equal(t, "POST", httpRoutes[1].GetMatch()[0].GetMethod().GetExact())
+	assert.Equal(t, "users-read", httpRoutes[0].GetName())
+	assert.Equal(t, "/api/v1/users/", httpRoutes[0].GetMatch()[0].GetUri().GetPrefix())
+	assert.Equal(t, "PUT", httpRoutes[0].GetMatch()[0].GetMethod().GetExact())
+	assert.Equal(t, int32(250000000), httpRoutes[0].GetFault().GetDelay().GetFixedDelay().GetNanos())
+	assert.InDelta(t, 75.0, httpRoutes[0].GetFault().GetDelay().GetPercentage().GetValue(), 0.001)
+	assert.Equal(t, "orders-create", httpRoutes[1].GetName())
+	assert.Equal(t, "/api/v1/orders/", httpRoutes[1].GetMatch()[0].GetUri().GetPrefix())
+	assert.Equal(t, "DELETE", httpRoutes[1].GetMatch()[0].GetMethod().GetExact())
 	assert.Nil(t, httpRoutes[1].GetFault())
 	assert.Equal(t, "default", httpRoutes[2].GetName())
 
