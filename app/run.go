@@ -91,7 +91,7 @@ func Run() {
 		}
 
 		if params.IstioMode {
-			err = istio.CreateIstioResources(ctx, kubeConfig, namespaceName, resourceName)
+			err = istio.CreateIstioResources(ctx, kubeConfig, namespaceName, resourceName, params.VirtualServiceRoutes)
 			if err != nil {
 				panic(err)
 			}

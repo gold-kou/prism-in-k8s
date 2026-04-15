@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gold-kou/prism-in-k8s/app/istio"
+	"github.com/gold-kou/prism-in-k8s/app/params"
 	"github.com/gold-kou/prism-in-k8s/app/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -31,15 +32,79 @@ func TestCreateIstioResources(t *testing.T) {
 	err = testutil.CreateNamespace(ctx, k8sClientSet, testNamespaceName)
 	require.NoError(t, err)
 
-	// test target
-	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName)
+	// test target: use non-default values to distinguish from TestCreateIstioResources_DefaultRoutes
+	routes := []params.VirtualServiceRoute{
+		{
+			Name:            "users-update",
+			URIPrefix:       "/api/v1/users/",
+			Method:          "PUT",
+			DelayNanos:      250000000,
+			DelayPercentage: 75,
+		},
+		{
+			Name:      "orders-delete",
+			URIPrefix: "/api/v1/orders/",
+			Method:    "DELETE",
+		},
+	}
+	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName, routes)
 	assert.NoError(t, err)
 
 	// verify
 	istioClient, err := versioned.NewForConfig(kubeconfig)
 	assert.NoError(t, err)
-	_, err = istioClient.NetworkingV1alpha3().VirtualServices(testNamespaceName).Get(ctx, testResourceName, metav1.GetOptions{})
+	vs, err := istioClient.NetworkingV1alpha3().VirtualServices(testNamespaceName).Get(ctx, testResourceName, metav1.GetOptions{})
 	assert.NoError(t, err)
+	// verify configured routes + trailing default catch-all
+	httpRoutes := vs.Spec.GetHttp()
+	require.Len(t, httpRoutes, 3)
+	assert.Equal(t, "users-update", httpRoutes[0].GetName())
+	assert.Equal(t, "/api/v1/users/", httpRoutes[0].GetMatch()[0].GetUri().GetPrefix())
+	assert.Equal(t, "PUT", httpRoutes[0].GetMatch()[0].GetMethod().GetExact())
+	assert.Equal(t, int32(250000000), httpRoutes[0].GetFault().GetDelay().GetFixedDelay().GetNanos())
+	assert.InDelta(t, 75.0, httpRoutes[0].GetFault().GetDelay().GetPercentage().GetValue(), 0.001)
+	assert.Equal(t, "orders-delete", httpRoutes[1].GetName())
+	assert.Equal(t, "/api/v1/orders/", httpRoutes[1].GetMatch()[0].GetUri().GetPrefix())
+	assert.Equal(t, "DELETE", httpRoutes[1].GetMatch()[0].GetMethod().GetExact())
+	assert.Nil(t, httpRoutes[1].GetFault())
+	assert.Equal(t, "default", httpRoutes[2].GetName())
+
+	// clean up
+	err = testutil.DeleteNamespace(ctx, k8sClientSet, testNamespaceName)
+	require.NoError(t, err)
+}
+
+func TestCreateIstioResources_DefaultRoutes(t *testing.T) {
+	testNamespaceName := "test-namespace" + uuid.NewString()
+	testResourceName := "test-resource" + uuid.NewString()
+
+	ctx := context.TODO()
+	kubeconfigPath := clientcmd.NewDefaultPathOptions().GetDefaultFilename()
+	kubeconfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	require.NoError(t, err)
+
+	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
+	require.NoError(t, err)
+	err = testutil.CreateNamespace(ctx, k8sClientSet, testNamespaceName)
+	require.NoError(t, err)
+
+	// test target: nil routes should fall back to the hardcoded default
+	err = istio.CreateIstioResources(ctx, kubeconfig, testNamespaceName, testResourceName, nil)
+	assert.NoError(t, err)
+
+	// verify
+	istioClient, err := versioned.NewForConfig(kubeconfig)
+	assert.NoError(t, err)
+	vs, err := istioClient.NetworkingV1alpha3().VirtualServices(testNamespaceName).Get(ctx, testResourceName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	httpRoutes := vs.Spec.GetHttp()
+	require.Len(t, httpRoutes, 2)
+	assert.Equal(t, "example1", httpRoutes[0].GetName())
+	assert.Equal(t, "/example1/", httpRoutes[0].GetMatch()[0].GetUri().GetPrefix())
+	assert.Equal(t, "GET", httpRoutes[0].GetMatch()[0].GetMethod().GetExact())
+	assert.Equal(t, int32(100000000), httpRoutes[0].GetFault().GetDelay().GetFixedDelay().GetNanos())
+	assert.InDelta(t, 100.0, httpRoutes[0].GetFault().GetDelay().GetPercentage().GetValue(), 0.001)
+	assert.Equal(t, "default", httpRoutes[1].GetName())
 
 	// clean up
 	err = testutil.DeleteNamespace(ctx, k8sClientSet, testNamespaceName)

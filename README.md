@@ -35,13 +35,6 @@ Run the following command to provision the Prism Pod and its associated resource
 $ make run-create
 ```
 
-## Step 4. (Optional) Advanced Configuration
-To simulate more realistic scenarios, you can modify the Istio VirtualService to include fault injections, such as fixed delays (`spec.http.fault.delay.fixedDelay`).
-
-```
-$ kubectl edit VirtualService -n <your_namespace> <your_virtual_service_name>
-```
-
 # Cleanup
 ```
 $ make run-delete
@@ -59,6 +52,7 @@ $ make run-delete
 | `prismCpu`                    | CPU request for Prism                     | `"500m"`                       | No       |
 | `prismMemory`                 | Memory request for Prism                  | `"512Mi"`                      | No       |
 | `istioMode`                   | Whether to use istio                      | `false`                        | No       |
+| `virtualServiceRoutes`        | HTTP routes for the Istio VirtualService. Each entry supports `name` (required), `uriPrefix`, `method` (GET/HEAD/POST/PUT/PATCH/DELETE/CONNECT/OPTIONS/TRACE), `delayNanos` (>=0), and `delayPercentage` (0-100). A trailing catch-all `default` route is appended automatically. Only applied when `istioMode` is `true`. | -                              | No       |
 | `istioProxyCpu`               | CPU request for Istio                     | `"500m"`                       | No       |
 | `istioProxyMemory`            | Memory request for Istio                  | `"512Mi"`                      | No       |
 | `priorityClassName`           | Value of priorityClassName                | -                              | No       |
@@ -73,6 +67,15 @@ microserviceName: "sample"
 microserviceNamespace: "sample"
 prismMockSuffix: "-prism-mock"
 istioMode: true
+virtualServiceRoutes:
+  - name: "example1"
+    uriPrefix: "/example1/"
+    method: "GET"
+    delayNanos: 100000000
+    delayPercentage: 100
+  - name: "example2"
+    uriPrefix: "/example2/"
+    method: "POST"
 priorityClassName: "high-priority"
 nodeAffinity:
   - key: "karpenter.sh/nodepool"

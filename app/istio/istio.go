@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/gold-kou/prism-in-k8s/app/params"
 	"google.golang.org/protobuf/types/known/durationpb"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
@@ -19,12 +20,15 @@ const (
 	defaultDelayPercentage = 100.0     // 100%
 )
 
-func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
+func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string, routes []params.VirtualServiceRoute) error {
 	// Istio clientset
 	istioClientSet, err := versioned.NewForConfig(kubeconfig)
 	if err != nil {
 		return fmt.Errorf("failed to create Istio client: %w", err)
 	}
+
+	host := resourceName + "." + namespaceName + ".svc.cluster.local"
+	httpRoutes := buildHTTPRoutes(host, routes)
 
 	// VirtualService
 	virtualService := &v1alpha3.VirtualService{
@@ -32,55 +36,8 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 			Name: resourceName,
 		},
 		Spec: networkingv1alpha3.VirtualService{
-			Hosts: []string{
-				resourceName + "." + namespaceName + ".svc.cluster.local",
-			},
-			Http: []*networkingv1alpha3.HTTPRoute{
-				{
-					Name: "example1",
-					Match: []*networkingv1alpha3.HTTPMatchRequest{
-						{
-							Uri: &networkingv1alpha3.StringMatch{
-								MatchType: &networkingv1alpha3.StringMatch_Prefix{
-									Prefix: "/example1/",
-								},
-							},
-							Method: &networkingv1alpha3.StringMatch{
-								MatchType: &networkingv1alpha3.StringMatch_Exact{
-									Exact: "GET",
-								},
-							},
-						},
-					},
-					Fault: &networkingv1alpha3.HTTPFaultInjection{
-						Delay: &networkingv1alpha3.HTTPFaultInjection_Delay{
-							Percentage: &networkingv1alpha3.Percent{
-								Value: defaultDelayPercentage,
-							},
-							HttpDelayType: &networkingv1alpha3.HTTPFaultInjection_Delay_FixedDelay{
-								FixedDelay: &durationpb.Duration{Nanos: int32(defaultDelayNanos)}, // 100ms
-							},
-						},
-					},
-					Route: []*networkingv1alpha3.HTTPRouteDestination{
-						{
-							Destination: &networkingv1alpha3.Destination{
-								Host: resourceName + "." + namespaceName + ".svc.cluster.local",
-							},
-						},
-					},
-				},
-				{
-					Name: "default",
-					Route: []*networkingv1alpha3.HTTPRouteDestination{
-						{
-							Destination: &networkingv1alpha3.Destination{
-								Host: resourceName + "." + namespaceName + ".svc.cluster.local",
-							},
-						},
-					},
-				},
-			},
+			Hosts: []string{host},
+			Http:  httpRoutes,
 		},
 	}
 	_, err = istioClientSet.NetworkingV1alpha3().VirtualServices(namespaceName).Create(ctx, virtualService, metav1.CreateOptions{})
@@ -93,6 +50,102 @@ func CreateIstioResources(ctx context.Context, kubeconfig *restclient.Config, na
 		slog.Info("VirtualService is created successfully")
 	}
 	return nil
+}
+
+func buildHTTPRoutes(host string, routes []params.VirtualServiceRoute) []*networkingv1alpha3.HTTPRoute {
+	// if route parameters are empty, default behavior
+	if len(routes) == 0 {
+		return []*networkingv1alpha3.HTTPRoute{
+			{
+				Name: "example1",
+				Match: []*networkingv1alpha3.HTTPMatchRequest{
+					{
+						Uri: &networkingv1alpha3.StringMatch{
+							MatchType: &networkingv1alpha3.StringMatch_Prefix{
+								Prefix: "/example1/",
+							},
+						},
+						Method: &networkingv1alpha3.StringMatch{
+							MatchType: &networkingv1alpha3.StringMatch_Exact{
+								Exact: "GET",
+							},
+						},
+					},
+				},
+				Fault: &networkingv1alpha3.HTTPFaultInjection{
+					Delay: &networkingv1alpha3.HTTPFaultInjection_Delay{
+						Percentage: &networkingv1alpha3.Percent{
+							Value: defaultDelayPercentage,
+						},
+						HttpDelayType: &networkingv1alpha3.HTTPFaultInjection_Delay_FixedDelay{
+							FixedDelay: &durationpb.Duration{Nanos: int32(defaultDelayNanos)},
+						},
+					},
+				},
+				Route: []*networkingv1alpha3.HTTPRouteDestination{
+					{Destination: &networkingv1alpha3.Destination{Host: host}},
+				},
+			},
+			{
+				Name: "default",
+				Route: []*networkingv1alpha3.HTTPRouteDestination{
+					{Destination: &networkingv1alpha3.Destination{Host: host}},
+				},
+			},
+		}
+	}
+
+	httpRoutes := make([]*networkingv1alpha3.HTTPRoute, 0, len(routes)+1)
+	for _, route := range routes {
+		httpRoute := &networkingv1alpha3.HTTPRoute{
+			Name: route.Name,
+			Route: []*networkingv1alpha3.HTTPRouteDestination{
+				{Destination: &networkingv1alpha3.Destination{Host: host}},
+			},
+		}
+
+		if route.URIPrefix != "" || route.Method != "" {
+			match := &networkingv1alpha3.HTTPMatchRequest{}
+			if route.URIPrefix != "" {
+				match.Uri = &networkingv1alpha3.StringMatch{
+					MatchType: &networkingv1alpha3.StringMatch_Prefix{Prefix: route.URIPrefix},
+				}
+			}
+			if route.Method != "" {
+				match.Method = &networkingv1alpha3.StringMatch{
+					MatchType: &networkingv1alpha3.StringMatch_Exact{Exact: route.Method},
+				}
+			}
+			httpRoute.Match = []*networkingv1alpha3.HTTPMatchRequest{match}
+		}
+
+		if route.DelayNanos > 0 {
+			percentage := route.DelayPercentage
+			if percentage == 0 {
+				percentage = defaultDelayPercentage
+			}
+			httpRoute.Fault = &networkingv1alpha3.HTTPFaultInjection{
+				Delay: &networkingv1alpha3.HTTPFaultInjection_Delay{
+					Percentage: &networkingv1alpha3.Percent{Value: percentage},
+					HttpDelayType: &networkingv1alpha3.HTTPFaultInjection_Delay_FixedDelay{
+						FixedDelay: &durationpb.Duration{Nanos: route.DelayNanos},
+					},
+				},
+			}
+		}
+
+		httpRoutes = append(httpRoutes, httpRoute)
+	}
+
+	// always add default catch-all route
+	httpRoutes = append(httpRoutes, &networkingv1alpha3.HTTPRoute{
+		Name: "default",
+		Route: []*networkingv1alpha3.HTTPRouteDestination{
+			{Destination: &networkingv1alpha3.Destination{Host: host}},
+		},
+	})
+
+	return httpRoutes
 }
 
 func DeleteIstioResources(ctx context.Context, kubeconfig *restclient.Config, namespaceName, resourceName string) error {
