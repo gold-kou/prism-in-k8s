@@ -35,13 +35,6 @@ Run the following command to provision the Prism Pod and its associated resource
 $ make run-create
 ```
 
-## Step 4. (Optional) Advanced Configuration
-To simulate more realistic scenarios, you can modify the Istio VirtualService to include fault injections, such as fixed delays (`spec.http.fault.delay.fixedDelay`).
-
-```
-$ kubectl edit VirtualService -n <your_namespace> <your_virtual_service_name>
-```
-
 # Cleanup
 ```
 $ make run-delete
