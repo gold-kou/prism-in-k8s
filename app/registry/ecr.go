@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/ecr/types"
 	"github.com/gold-kou/prism-in-k8s/app/params"
-	"golang.org/x/xerrors"
 )
 
 var (
@@ -28,9 +27,9 @@ var (
 func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, resourceName string) error {
 	// build Docker image
 	imageTag := params.MicroserviceName + ":v1"
-	cmd := exec.Command("docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.prism", "-t", imageTag, ".")
+	cmd := exec.CommandContext(ctx, "docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.prism", "-t", imageTag, ".")
 	if err := cmd.Run(); err != nil {
-		return xerrors.Errorf("%s: %v", errFailedToBuildDockerImage, err)
+		return fmt.Errorf("%w: %w", errFailedToBuildDockerImage, err)
 	}
 	log.Println("[INFO] Docker image is built successfully")
 
@@ -56,7 +55,7 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 	if err != nil {
 		var ecrExistsException *types.RepositoryAlreadyExistsException
 		if !errors.As(err, &ecrExistsException) {
-			return xerrors.Errorf("%w: %w", errFailedToCreateECR, err)
+			return fmt.Errorf("%w: %w", errFailedToCreateECR, err)
 		}
 		log.Println("[WARN] The ECR already exists")
 	} else {
@@ -65,23 +64,23 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 
 	// tag Docker image for ECR
 	ecrImageTag := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s:latest", awsAccountID, awsConfig.Region, repositoryName)
-	cmdTag := exec.Command("docker", "tag", imageTag, ecrImageTag)
+	cmdTag := exec.CommandContext(ctx, "docker", "tag", imageTag, ecrImageTag)
 	if err := cmdTag.Run(); err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToTagImage, err)
+		return fmt.Errorf("%w: %w", errFailedToTagImage, err)
 	}
 	log.Println("[INFO] Docker image tagged successfully")
 
 	// login to ECR
 	err = loginToECR(ctx, awsConfig, awsAccountID)
 	if err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToLoginECR, err)
+		return fmt.Errorf("%w: %w", errFailedToLoginECR, err)
 	}
 	log.Println("[INFO] Logged in ECR successfully")
 
 	// push image to ECR
-	cmdPush := exec.Command("docker", "push", ecrImageTag)
+	cmdPush := exec.CommandContext(ctx, "docker", "push", ecrImageTag)
 	if err := cmdPush.Run(); err != nil {
-		return xerrors.Errorf("%w: %w", errFailedToPushImage, err)
+		return fmt.Errorf("%w: %w", errFailedToPushImage, err)
 	}
 	log.Println("[INFO] Docker image is pushed to ECR successfully")
 	return nil
@@ -118,7 +117,7 @@ func loginToECR(ctx context.Context, awsConfig aws.Config, awsAccountID string) 
 	password := parts[1]
 	registry := *authData.ProxyEndpoint
 
-	loginCmd := exec.Command("docker", "login", "--username", username, "--password-stdin", registry)
+	loginCmd := exec.CommandContext(ctx, "docker", "login", "--username", username, "--password-stdin", registry)
 	loginCmd.Stdin = strings.NewReader(password)
 	output, err := loginCmd.CombinedOutput()
 	if err != nil {
@@ -140,7 +139,7 @@ func DeleteECR(ctx context.Context, awsConfig aws.Config, resourceName string) e
 	if err != nil {
 		var ecrNotFoundException *types.RepositoryNotFoundException
 		if !errors.As(err, &ecrNotFoundException) {
-			return xerrors.Errorf("%w: %w", errFailedToDeleteECR, err)
+			return fmt.Errorf("%w: %w", errFailedToDeleteECR, err)
 		}
 		log.Println("[WARN] The ECR is not found")
 	} else {

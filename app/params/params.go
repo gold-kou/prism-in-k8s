@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"golang.org/x/xerrors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -16,7 +15,7 @@ const (
 	defaultPrismPort        = 80
 	defaultPrismCPU         = "500m"
 	defaultPrismMemory      = "512Mi"
-	defaultIstioMode        = true
+	defaultIstioMode        = false
 	defaultIstioProxyCPU    = "500m"
 	defaultIstioProxyMemory = "512Mi"
 )
@@ -113,7 +112,7 @@ func init() {
 	if config.PrismMemory != "" {
 		PrismMemory = config.PrismMemory
 	}
-	IstioMode = false
+	IstioMode = defaultIstioMode
 	if config.IstioMode {
 		IstioMode = config.IstioMode
 	}
@@ -164,24 +163,24 @@ func ValidateParams() error {
 		switch v := value.(type) {
 		case string:
 			if v == "" {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		case int:
 			if v == 0 {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		case time.Duration:
 			if v == 0*time.Millisecond {
-				return xerrors.Errorf("%w: %s", errEmptyParameter, name)
+				return fmt.Errorf("%w: %s", errEmptyParameter, name)
 			}
 		default:
-			return xerrors.Errorf("%w: %s", errUnsupportedParameterType, name)
+			return fmt.Errorf("%w: %s", errUnsupportedParameterType, name)
 		}
 	}
 
 	for _, expr := range NodeAffinityMatchExpressions {
 		if !validNodeSelectorOperators[expr.Operator] {
-			return xerrors.Errorf("%w: %s", errInvalidNodeSelectorOperator, expr.Operator)
+			return fmt.Errorf("%w: %s", errInvalidNodeSelectorOperator, expr.Operator)
 		}
 	}
 

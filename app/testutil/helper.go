@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gold-kou/prism-in-k8s/app/util"
 	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"istio.io/client-go/pkg/clientset/versioned"
@@ -14,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -39,7 +39,7 @@ func CreateDeployment(ctx context.Context, clientset *kubernetes.Clientset, name
 			Name: name,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: util.Int32Ptr(1),
+			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": name},
 			},
