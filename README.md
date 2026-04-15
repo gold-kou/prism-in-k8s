@@ -58,7 +58,7 @@ $ make run-delete
 | `prismPort`                   | Port number for Prism                     | `80`                           | No       |
 | `prismCpu`                    | CPU request for Prism                     | `"500m"`                       | No       |
 | `prismMemory`                 | Memory request for Prism                  | `"512Mi"`                      | No       |
-| `istioMode`                   | Whether to use istio                      | `true`                         | No       |
+| `istioMode`                   | Whether to use istio                      | `false`                        | No       |
 | `istioProxyCpu`               | CPU request for Istio                     | `"500m"`                       | No       |
 | `istioProxyMemory`            | Memory request for Istio                  | `"512Mi"`                      | No       |
 | `priorityClassName`           | Value of priorityClassName                | -                              | No       |
@@ -72,7 +72,7 @@ sample:
 microserviceName: "sample"
 microserviceNamespace: "sample"
 prismMockSuffix: "-prism-mock"
-istioMode: false
+istioMode: true
 priorityClassName: "high-priority"
 nodeAffinity:
   - key: "karpenter.sh/nodepool"

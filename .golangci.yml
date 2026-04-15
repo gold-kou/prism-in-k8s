@@ -29,6 +29,7 @@ linters:
     - noinlineerr # prefer inline error handling
     - wsl_v5 # do not enforce newline rules (v2 equivalent of wsl)
     - godoclint # do not enforce godoc format
+    - err113 # prefer inline error messages over sentinel-then-wrap when errors are not programmatically checked
   settings:
     forbidigo:
       forbid:
