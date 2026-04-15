@@ -35,14 +35,14 @@ func TestCreateIstioResources(t *testing.T) {
 	// test target: use non-default values to distinguish from TestCreateIstioResources_DefaultRoutes
 	routes := []params.VirtualServiceRoute{
 		{
-			Name:            "users-read",
+			Name:            "users-update",
 			URIPrefix:       "/api/v1/users/",
 			Method:          "PUT",
 			DelayNanos:      250000000,
 			DelayPercentage: 75,
 		},
 		{
-			Name:      "orders-create",
+			Name:      "orders-delete",
 			URIPrefix: "/api/v1/orders/",
 			Method:    "DELETE",
 		},
@@ -58,12 +58,12 @@ func TestCreateIstioResources(t *testing.T) {
 	// verify configured routes + trailing default catch-all
 	httpRoutes := vs.Spec.GetHttp()
 	require.Len(t, httpRoutes, 3)
-	assert.Equal(t, "users-read", httpRoutes[0].GetName())
+	assert.Equal(t, "users-update", httpRoutes[0].GetName())
 	assert.Equal(t, "/api/v1/users/", httpRoutes[0].GetMatch()[0].GetUri().GetPrefix())
 	assert.Equal(t, "PUT", httpRoutes[0].GetMatch()[0].GetMethod().GetExact())
 	assert.Equal(t, int32(250000000), httpRoutes[0].GetFault().GetDelay().GetFixedDelay().GetNanos())
 	assert.InDelta(t, 75.0, httpRoutes[0].GetFault().GetDelay().GetPercentage().GetValue(), 0.001)
-	assert.Equal(t, "orders-create", httpRoutes[1].GetName())
+	assert.Equal(t, "orders-delete", httpRoutes[1].GetName())
 	assert.Equal(t, "/api/v1/orders/", httpRoutes[1].GetMatch()[0].GetUri().GetPrefix())
 	assert.Equal(t, "DELETE", httpRoutes[1].GetMatch()[0].GetMethod().GetExact())
 	assert.Nil(t, httpRoutes[1].GetFault())
