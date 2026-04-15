@@ -10,7 +10,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/gold-kou/prism-in-k8s/app/params"
-	"github.com/gold-kou/prism-in-k8s/app/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +19,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth" // to provide configuration
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -35,10 +35,9 @@ var (
 	errFailedToDeleteNameSpace  = errors.New("failed to delete namespace")
 	errFailedToDeleteDeployment = errors.New("failed to delete deployment")
 	errFailedToDeleteService    = errors.New("failed to delete service")
-	errFailedToListPods           = errors.New("failed to list pods")
-	errFailedToGetLatestVersion   = errors.New("failed to get latest version")
-	errInvalidVersionFormat       = errors.New("invalid version format")
-	errInvalidNumberInVersion     = errors.New("invalid number in version")
+	errFailedToListPods         = errors.New("failed to list pods")
+	errFailedToGetLatestVersion = errors.New("failed to get latest version")
+	errNoValidVersionFound      = errors.New("no valid version found")
 )
 
 func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, isTest bool) error {
@@ -52,7 +51,7 @@ func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.
 		return fmt.Errorf("%w: %w", errFailedToCreateNameSpace, err)
 	}
 
-	err = crateDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, istioMode, isTest)
+	err = createDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, istioMode, isTest)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errFailedToCreateDeployment, err)
 	}
@@ -86,7 +85,7 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 		for _, item := range podList.Items {
 			hyphenedVersions = append(hyphenedVersions, item.ObjectMeta.Labels["istio.io/rev"])
 		}
-		latestVersion := getLatestVersion(hyphenedVersions)
+		latestVersion, err := getLatestVersion(hyphenedVersions)
 		if err != nil {
 			return fmt.Errorf("%w: %w", errFailedToGetLatestVersion, err)
 		}
@@ -105,7 +104,7 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 	return nil
 }
 
-func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Config, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string, istioMode, isTest bool) error {
+func createDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Config, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string, istioMode, isTest bool) error {
 	// Prism image
 	prismImage := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s", awsAccountID, awsConfig.Region, resourceName)
 	if isTest {
@@ -118,7 +117,7 @@ func crateDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Con
 			Name: resourceName,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: util.Int32Ptr(1),
+			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": resourceName,
@@ -335,14 +334,14 @@ func parseVersion(version string) ([]int, error) {
 	// convert "x-y-z" to [x, y, z]
 	parts := strings.Split(version, "-")
 	if len(parts) != versions {
-		return nil, fmt.Errorf("%w: %s", errInvalidVersionFormat, version)
+		return nil, fmt.Errorf("invalid version format: %s", version)
 	}
 
 	intParts := make([]int, len(parts))
 	for i, part := range parts {
 		num, err := strconv.Atoi(part)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %s", errInvalidNumberInVersion, part)
+			return nil, fmt.Errorf("invalid number in version: %s", part)
 		}
 		intParts[i] = num
 	}
@@ -363,26 +362,40 @@ func compareVersions(v1, v2 []int) int {
 	return 0
 }
 
-func getLatestVersion(versions []string) string {
+// return the latest version of label value of istio.io/rev
+func getLatestVersion(versions []string) (string, error) {
 	if len(versions) == 0 {
-		return ""
+		return "", nil
 	}
 
-	// init max with the zero index element
-	maxVersion := versions[0]
-	// ignore err
-	maxVersionParts, _ := parseVersion(maxVersion)
+	maxVersion := ""
+	var maxVersionParts []int
+	var nonVersionRevision string
 
-	// compare all versions
-	for _, version := range versions[1:] {
-		// ignore err
-		versionParts, _ := parseVersion(version)
+	for _, version := range versions {
+		versionParts, err := parseVersion(version)
+		if err != nil {
+			// Non-version revision names like "default" are valid Istio revisions
+			log.Printf("[WARN] Non-version revision %q found, treating as valid revision", version)
+			if nonVersionRevision == "" {
+				nonVersionRevision = version
+			}
+			continue
+		}
 
-		if compareVersions(versionParts, maxVersionParts) > 0 {
+		if maxVersionParts == nil || compareVersions(versionParts, maxVersionParts) > 0 {
 			maxVersion = version
 			maxVersionParts = versionParts
 		}
 	}
 
-	return maxVersion
+	// Prefer versioned revisions over non-version ones
+	if maxVersion != "" {
+		return maxVersion, nil
+	}
+	if nonVersionRevision != "" {
+		return nonVersionRevision, nil
+	}
+
+	return "", fmt.Errorf("%w: %v", errNoValidVersionFound, versions)
 }

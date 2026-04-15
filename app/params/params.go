@@ -15,7 +15,7 @@ const (
 	defaultPrismPort        = 80
 	defaultPrismCPU         = "500m"
 	defaultPrismMemory      = "512Mi"
-	defaultIstioMode        = true
+	defaultIstioMode        = false
 	defaultIstioProxyCPU    = "500m"
 	defaultIstioProxyMemory = "512Mi"
 )
@@ -112,7 +112,7 @@ func init() {
 	if config.PrismMemory != "" {
 		PrismMemory = config.PrismMemory
 	}
-	IstioMode = false
+	IstioMode = defaultIstioMode
 	if config.IstioMode {
 		IstioMode = config.IstioMode
 	}
