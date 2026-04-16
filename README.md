@@ -18,10 +18,12 @@ Before using this tool, ensure you have the following installed and configured:
 
 # Usage
 ## Step 1. OpenAPI
-Place your OpenAPI definition in `app/openapi.yaml`.
+Prepare your OpenAPI definition file. You can either:
+- Place it at `app/openapi.yaml` (default), or
+- Set the `OPENAPI_PATH` environment variable to the path of your OpenAPI file
 
 ## Step 2. Set Parameters
-Define the necessary parameters in `config/params.yaml`. At a minimum, the following are required:
+Define the necessary parameters in `config/params.yaml` and set `PARAMS_CONFIG_PATH` to its path. At a minimum, the following are required:
 
 - `microserviceName`
   - Your microservice name

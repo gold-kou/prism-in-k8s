@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -15,10 +16,16 @@ import (
 	"github.com/gold-kou/prism-in-k8s/app/params"
 )
 
-func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, resourceName string) error {
-	// build Docker image
+func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, resourceName, openapiPath string) error {
+	// build Docker image using a temporary build context
+	buildCtx, err := prepareBuildContext(openapiPath)
+	if err != nil {
+		return fmt.Errorf("failed to prepare docker build context: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(buildCtx) }()
+
 	imageTag := params.MicroserviceName + ":v1"
-	cmd := exec.CommandContext(ctx, "docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.prism", "-t", imageTag, ".")
+	cmd := exec.CommandContext(ctx, "docker", "build", "--platform", "linux/amd64", "-t", imageTag, buildCtx)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to build docker image: %w", err)
 	}
@@ -42,7 +49,7 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 		RepositoryName: aws.String(repositoryName),
 		Tags:           tags,
 	}
-	_, err := ecrClient.CreateRepository(ctx, input)
+	_, err = ecrClient.CreateRepository(ctx, input)
 	if err != nil {
 		var ecrExistsException *types.RepositoryAlreadyExistsException
 		if !errors.As(err, &ecrExistsException) {
