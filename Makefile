@@ -1,4 +1,4 @@
-BINARY_NAME=prism-mock
+BINARY_NAME=prism-in-k8s
 GO=go
 KIND_CLUSTER_NAME=prism-test-cluster
 KIND_CONFIG=kind-config.yaml

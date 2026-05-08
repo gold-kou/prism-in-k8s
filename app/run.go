@@ -45,7 +45,7 @@ func init() {
 
 	openapiPath = os.Getenv("OPENAPI_PATH")
 	if openapiPath == "" {
-		openapiPath = "app/openapi.yaml"
+		openapiPath = "./openapi.yaml"
 	}
 
 	if !isTest {

@@ -93,7 +93,7 @@ type ECRTag struct {
 func init() {
 	path := os.Getenv("PARAMS_CONFIG_PATH")
 	if path == "" {
-		log.Fatal("PARAMS_CONFIG_PATH is not set")
+		path = "./params.yaml"
 	}
 	config, err := LoadConfig(path)
 	if err != nil {
