@@ -1,0 +1,5 @@
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY prism-in-k8s /usr/local/bin/prism-in-k8s
+
+ENTRYPOINT ["/usr/local/bin/prism-in-k8s"]

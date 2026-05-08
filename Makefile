@@ -1,4 +1,4 @@
-BINARY_NAME=prism-mock
+BINARY_NAME=prism-in-k8s
 GO=go
 KIND_CLUSTER_NAME=prism-test-cluster
 KIND_CONFIG=kind-config.yaml
@@ -11,11 +11,11 @@ clean:
 	rm -f $(BINARY_NAME)
 
 run-create: build
-	PARAMS_CONFIG_PATH=config/params.yaml ./$(BINARY_NAME) -create
+	PARAMS_CONFIG_PATH=config/params.yaml OPENAPI_PATH=app/openapi.yaml ./$(BINARY_NAME) -create
 	$(MAKE) clean
 
 run-create-test: build
-	PARAMS_CONFIG_PATH=config/params.yaml ./$(BINARY_NAME) -create -test
+	PARAMS_CONFIG_PATH=config/params.yaml OPENAPI_PATH=app/openapi.yaml ./$(BINARY_NAME) -create -test
 	$(MAKE) clean
 
 run-delete: build

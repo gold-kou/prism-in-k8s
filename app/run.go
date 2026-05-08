@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -26,6 +27,7 @@ var (
 	kubeConfig    *restclient.Config
 	resourceName  string
 	namespaceName string
+	openapiPath   string
 )
 
 func init() {
@@ -39,6 +41,11 @@ func init() {
 	err := params.ValidateParams()
 	if err != nil {
 		panic(err)
+	}
+
+	openapiPath = os.Getenv("OPENAPI_PATH")
+	if openapiPath == "" {
+		openapiPath = "./openapi.yaml"
 	}
 
 	if !isTest {
@@ -79,7 +86,7 @@ func Run() {
 
 	if isCreate {
 		if !isTest {
-			err := registry.BuildAndPushECR(ctx, awsConfig, awsAccountID, resourceName)
+			err := registry.BuildAndPushECR(ctx, awsConfig, awsAccountID, resourceName, openapiPath)
 			if err != nil {
 				panic(err)
 			}

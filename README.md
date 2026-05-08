@@ -12,16 +12,25 @@ By configuring the VirtualService, you can introduce fixed delays using fault in
 # Prerequisites
 Before using this tool, ensure you have the following installed and configured:
 
-- Tools: Go, kubectl, and Docker.
+- Tools: kubectl and Docker.
 - Credentials: Valid AWS and Kubernetes context/credentials.
   - Note: Ensure your current context is set to the target cluster where you want to deploy the mock resources.
 
+# Installation
+Download the binary for your platform from the [GitHub Releases](https://github.com/gold-kou/prism-in-k8s/releases) page. Extract the archive and place the `prism-in-k8s` binary somewhere on your `PATH` (e.g. `/usr/local/bin`).
+
+Alternatively, use the published container image:
+
+```
+ghcr.io/gold-kou/prism-in-k8s:latest
+```
+
 # Usage
 ## Step 1. OpenAPI
-Place your OpenAPI definition in `app/openapi.yaml`.
+Place your OpenAPI definition file at `./openapi.yaml` in your working directory, or set the `OPENAPI_PATH` environment variable to the path of your OpenAPI file.
 
 ## Step 2. Set Parameters
-Define the necessary parameters in `config/params.yaml`. At a minimum, the following are required:
+Place your parameters file at `./params.yaml` in your working directory, or set the `PARAMS_CONFIG_PATH` environment variable to the path of your parameters file. At a minimum, the following are required:
 
 - `microserviceName`
   - Your microservice name
@@ -32,12 +41,12 @@ Define the necessary parameters in `config/params.yaml`. At a minimum, the follo
 Run the following command to provision the Prism Pod and its associated resources (ECR, Namespace, Deployment, Service, VirtualService):
 
 ```
-$ make run-create
+$ prism-in-k8s -create
 ```
 
 # Cleanup
 ```
-$ make run-delete
+$ prism-in-k8s -delete
 ```
 
 # Parameters
@@ -93,6 +102,18 @@ ecrTags:
 Note: `podAntiAffinityTopologyKey` uses `requiredDuringSchedulingIgnoredDuringExecution` with the `app` label of the deployed service as the label selector. This means it prevents multiple pods of the same Prism mock service from being scheduled on the same topology (e.g., same node).
 
 # For developers
+Additional requirement when building from source:
+
+- Go
+
+## Running from source
+Clone the repository and use the provided Makefile targets, which build the binary locally and pass the in-repo `config/params.yaml` and `app/openapi.yaml` via environment variables:
+
+```
+$ make run-create
+$ make run-delete
+```
+
 ## Testing
 Ensure the following tools are installed before running the tests:
 
