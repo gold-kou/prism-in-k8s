@@ -77,6 +77,7 @@ $ prism-in-k8s -delete
 | `nodeAffinity`                | Node affinity match expressions (key, operator, values). Operators: In, NotIn, Exists, DoesNotExist, Gt, Lt | -                              | No       |
 | `podAntiAffinityTopologyKey`  | Topology key for pod anti-affinity (e.g., `kubernetes.io/hostname`). Prevents multiple pods of the same service from running on the same topology | -                              | No       |
 | `ecrTags`                     | Pairs of ECR tag                          | -                              | No       |
+| `dockerBuildPlatform`         | Target platform passed to `docker build --platform` for the Prism image. Must be `linux/amd64` or `linux/arm64`. Set to `linux/arm64` when the destination cluster runs on Graviton (arm64) nodes. | `linux/amd64`                  | No       |
 
 sample:
 

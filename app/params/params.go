@@ -11,13 +11,14 @@ import (
 )
 
 const (
-	defaultTimeout          = 10 * time.Minute
-	defaultPrismPort        = 80
-	defaultPrismCPU         = "500m"
-	defaultPrismMemory      = "512Mi"
-	defaultIstioMode        = false
-	defaultIstioProxyCPU    = "500m"
-	defaultIstioProxyMemory = "512Mi"
+	defaultTimeout             = 10 * time.Minute
+	defaultPrismPort           = 80
+	defaultPrismCPU            = "500m"
+	defaultPrismMemory         = "512Mi"
+	defaultIstioMode           = false
+	defaultIstioProxyCPU       = "500m"
+	defaultIstioProxyMemory    = "512Mi"
+	defaultDockerBuildPlatform = "linux/amd64"
 )
 
 var validNodeSelectorOperators = map[string]bool{
@@ -29,6 +30,11 @@ var validHTTPMethods = map[string]bool{
 	"GET": true, "HEAD": true, "POST": true, "PUT": true,
 	"PATCH": true, "DELETE": true, "CONNECT": true,
 	"OPTIONS": true, "TRACE": true,
+}
+
+var validDockerBuildPlatforms = map[string]bool{
+	"linux/amd64": true,
+	"linux/arm64": true,
 }
 
 const maxDelayPercentage = 100.0
@@ -51,6 +57,7 @@ var (
 	PodAntiAffinityTopologyKey   string
 	EcrTags                      []ECRTag
 	VirtualServiceRoutes         []VirtualServiceRoute
+	DockerBuildPlatform          string
 )
 
 type Config struct {
@@ -69,6 +76,7 @@ type Config struct {
 	PodAntiAffinityTopologyKey   string                        `yaml:"podAntiAffinityTopologyKey"`
 	EcrTags                      []ECRTag                      `yaml:"ecrTags"`
 	VirtualServiceRoutes         []VirtualServiceRoute         `yaml:"virtualServiceRoutes"`
+	DockerBuildPlatform          string                        `yaml:"dockerBuildPlatform"`
 }
 
 type VirtualServiceRoute struct {
@@ -139,6 +147,10 @@ func init() {
 	PodAntiAffinityTopologyKey = config.PodAntiAffinityTopologyKey
 	EcrTags = config.EcrTags
 	VirtualServiceRoutes = config.VirtualServiceRoutes
+	DockerBuildPlatform = defaultDockerBuildPlatform
+	if config.DockerBuildPlatform != "" {
+		DockerBuildPlatform = config.DockerBuildPlatform
+	}
 }
 
 func LoadConfig(filename string) (*Config, error) {
@@ -169,6 +181,7 @@ func ValidateParams() error {
 		"prismMemory":           PrismMemory,
 		"istioProxyCPU":         IstioProxyCPU,
 		"istioProxyMemory":      IstioProxyMemory,
+		"dockerBuildPlatform":   DockerBuildPlatform,
 	}
 
 	for name, value := range params {
@@ -194,6 +207,10 @@ func ValidateParams() error {
 		if !validNodeSelectorOperators[expr.Operator] {
 			return fmt.Errorf("invalid node selector operator: %s", expr.Operator)
 		}
+	}
+
+	if !validDockerBuildPlatforms[DockerBuildPlatform] {
+		return fmt.Errorf("invalid dockerBuildPlatform: %s (must be linux/amd64 or linux/arm64)", DockerBuildPlatform)
 	}
 
 	return validateVirtualServiceRoutes()
