@@ -25,6 +25,15 @@ Alternatively, use the published container image:
 ghcr.io/gold-kou/prism-in-k8s:latest
 ```
 
+## macOS users
+The released binary is not signed with an Apple Developer ID, so on first run macOS Gatekeeper may block it with a message like *"Apple could not verify 'prism-in-k8s' is free of malware..."*. Remove the quarantine attribute to allow execution:
+
+```
+xattr -d com.apple.quarantine /path/to/prism-in-k8s
+```
+
+Alternatively, after the block dialog appears, open *System Settings > Privacy & Security* and click *Open Anyway*.
+
 # Usage
 ## Step 1. OpenAPI
 Place your OpenAPI definition file at `./openapi.yaml` in your working directory, or set the `OPENAPI_PATH` environment variable to the path of your OpenAPI file.
