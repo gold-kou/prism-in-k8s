@@ -25,7 +25,7 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 	defer func() { _ = os.RemoveAll(buildCtx) }()
 
 	imageTag := params.MicroserviceName + ":v1"
-	cmd := exec.CommandContext(ctx, "docker", "build", "--platform", "linux/amd64", "-t", imageTag, buildCtx)
+	cmd := exec.CommandContext(ctx, "docker", "build", "--platform", params.DockerBuildPlatform, "-t", imageTag, buildCtx)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to build docker image: %w", err)
 	}
