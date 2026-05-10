@@ -38,7 +38,7 @@ kind-down:
 
 test-go: kind-up
 	@trap '$(MAKE) kind-down' EXIT; \
-	PARAMS_CONFIG_PATH=../../config/params.yaml $(GO) test ./... -v -shuffle=on -p 1
+	$(GO) test ./... -v -shuffle=on -p 1
 
 # use run-create-test to create only k8s resources
 # 2 curl requests because the first one doesn't work

@@ -27,18 +27,18 @@ const (
 	appLabel        = "app"
 )
 
-func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, isTest bool) error {
+func CreateK8sResources(ctx context.Context, cfg *params.Config, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, isTest bool) error {
 	k8sClientSet, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
 		return fmt.Errorf("failed to create clientset: %w", err)
 	}
 
-	err = createNamespace(ctx, k8sClientSet, namespaceName, istioMode)
+	err = createNamespace(ctx, k8sClientSet, namespaceName, cfg.IstioMode)
 	if err != nil {
 		return fmt.Errorf("failed to create namespace: %w", err)
 	}
 
-	err = createDeployment(ctx, awsAccountID, awsConfig, k8sClientSet, namespaceName, resourceName, istioMode, isTest)
+	err = createDeployment(ctx, cfg, k8sClientSet, awsAccountID, awsConfig, namespaceName, resourceName, isTest)
 	if err != nil {
 		return fmt.Errorf("failed to create deployment: %w", err)
 	}
@@ -91,7 +91,7 @@ func createNamespace(ctx context.Context, k8sClientSet *kubernetes.Clientset, na
 	return nil
 }
 
-func createDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Config, k8sClientSet *kubernetes.Clientset, namespaceName, resourceName string, istioMode, isTest bool) error {
+func createDeployment(ctx context.Context, cfg *params.Config, k8sClientSet *kubernetes.Clientset, awsAccountID string, awsConfig aws.Config, namespaceName, resourceName string, isTest bool) error {
 	// Prism image
 	prismImage := fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com/%s", awsAccountID, awsConfig.Region, resourceName)
 	if isTest {
@@ -124,34 +124,34 @@ func createDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Co
 							Image: prismImage,
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: int32(params.PrismPort),
+									ContainerPort: int32(cfg.PrismPort),
 								},
 							},
 							Resources: corev1.ResourceRequirements{
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse(params.PrismCPU),
-									corev1.ResourceMemory: resource.MustParse(params.PrismMemory),
+									corev1.ResourceCPU:    resource.MustParse(cfg.PrismCPU),
+									corev1.ResourceMemory: resource.MustParse(cfg.PrismMemory),
 								},
 							},
 						},
 					},
-					PriorityClassName: params.PriorityClassName,
+					PriorityClassName: cfg.PriorityClassName,
 				},
 			},
 		},
 	}
 
-	deployment.Spec.Template.Spec.Affinity = buildAffinity(resourceName)
+	deployment.Spec.Template.Spec.Affinity = buildAffinity(cfg, resourceName)
 
 	if isTest {
 		// to get image from local
 		deployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullNever
 	}
 
-	if istioMode {
+	if cfg.IstioMode {
 		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/inject"] = "true"
-		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/proxyCPULimit"] = params.IstioProxyCPU
-		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/proxyMemoryLimit"] = params.IstioProxyMemory
+		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/proxyCPULimit"] = cfg.IstioProxyCPU
+		deployment.Spec.Template.ObjectMeta.Annotations["sidecar.istio.io/proxyMemoryLimit"] = cfg.IstioProxyMemory
 		deployment.Spec.Template.ObjectMeta.Annotations["traffic.sidecar.istio.io/includeOutboundIPRanges"] = "*"
 		deployment.Spec.Template.ObjectMeta.Annotations["proxy.istio.io/config"] = `{ "terminationDrainDuration": "30s" }`
 	}
@@ -168,9 +168,9 @@ func createDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Co
 	return nil
 }
 
-func buildAffinity(resourceName string) *corev1.Affinity {
-	hasNodeAffinity := len(params.NodeAffinityMatchExpressions) > 0
-	hasPodAntiAffinity := params.PodAntiAffinityTopologyKey != ""
+func buildAffinity(cfg *params.Config, resourceName string) *corev1.Affinity {
+	hasNodeAffinity := len(cfg.NodeAffinityMatchExpressions) > 0
+	hasPodAntiAffinity := cfg.PodAntiAffinityTopologyKey != ""
 
 	if !hasNodeAffinity && !hasPodAntiAffinity {
 		return nil
@@ -179,8 +179,8 @@ func buildAffinity(resourceName string) *corev1.Affinity {
 	affinity := &corev1.Affinity{}
 
 	if hasNodeAffinity {
-		matchExpressions := make([]corev1.NodeSelectorRequirement, 0, len(params.NodeAffinityMatchExpressions))
-		for _, expr := range params.NodeAffinityMatchExpressions {
+		matchExpressions := make([]corev1.NodeSelectorRequirement, 0, len(cfg.NodeAffinityMatchExpressions))
+		for _, expr := range cfg.NodeAffinityMatchExpressions {
 			matchExpressions = append(matchExpressions, corev1.NodeSelectorRequirement{
 				Key:      expr.Key,
 				Operator: corev1.NodeSelectorOperator(expr.Operator),
@@ -211,7 +211,7 @@ func buildAffinity(resourceName string) *corev1.Affinity {
 							},
 						},
 					},
-					TopologyKey: params.PodAntiAffinityTopologyKey,
+					TopologyKey: cfg.PodAntiAffinityTopologyKey,
 				},
 			},
 		}
