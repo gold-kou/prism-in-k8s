@@ -1,6 +1,6 @@
 module github.com/gold-kou/prism-in-k8s
 
-go 1.22.5
+go 1.24.13
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.30.1
