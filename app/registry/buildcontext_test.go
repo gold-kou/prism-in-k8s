@@ -43,10 +43,7 @@ func TestPrepareBuildContext_RelativePath(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "openapi.yaml"), openapiContent, 0o600))
 
-	wd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { _ = os.Chdir(wd) })
+	t.Chdir(dir)
 
 	buildCtx, err := registry.PrepareBuildContext("openapi.yaml")
 	require.NoError(t, err)
