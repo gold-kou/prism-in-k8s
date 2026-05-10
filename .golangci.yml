@@ -89,6 +89,9 @@ linters:
           - gosec
         text: "G703" # path traversal via taint analysis is intentional for config loading
       - linters:
+          - gosec
+        text: "G709" # yaml decode of trusted, user-supplied params.yaml is intentional
+      - linters:
           - staticcheck
         text: "QF" # quickfix suggestions are not errors
       - linters:
