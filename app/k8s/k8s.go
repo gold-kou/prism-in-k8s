@@ -24,6 +24,7 @@ import (
 const (
 	localPrismImage = "my-local-image:v1"
 	servicePort     = 80
+	appLabel        = "app"
 )
 
 func CreateK8sResources(ctx context.Context, awsAccountID string, awsConfig aws.Config, kubeconfig *restclient.Config, namespaceName, resourceName string, istioMode, isTest bool) error {
@@ -106,13 +107,13 @@ func createDeployment(ctx context.Context, awsAccountID string, awsConfig aws.Co
 			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": resourceName,
+					appLabel: resourceName,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": resourceName,
+						appLabel: resourceName,
 					},
 					Annotations: map[string]string{},
 				},
@@ -204,7 +205,7 @@ func buildAffinity(resourceName string) *corev1.Affinity {
 					LabelSelector: &metav1.LabelSelector{
 						MatchExpressions: []metav1.LabelSelectorRequirement{
 							{
-								Key:      "app",
+								Key:      appLabel,
 								Operator: metav1.LabelSelectorOpIn,
 								Values:   []string{resourceName},
 							},
@@ -226,7 +227,7 @@ func createService(ctx context.Context, k8sClientSet *kubernetes.Clientset, name
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				"app": resourceName,
+				appLabel: resourceName,
 			},
 			Ports: []corev1.ServicePort{
 				{
