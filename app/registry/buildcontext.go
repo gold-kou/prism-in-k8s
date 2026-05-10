@@ -14,7 +14,7 @@ COPY openapi.yaml /app/openapi.yaml
 COPY openapi-sample.yaml /app/openapi-sample.yaml
 COPY empty_check_and_copy.sh /app/empty_check_and_copy.sh
 RUN chmod +x /app/empty_check_and_copy.sh && /app/empty_check_and_copy.sh
-CMD ["mock", "-h", "0.0.0.0", "-p", "80", "/app/openapi.yaml"]
+CMD ["mock", "-h", "0.0.0.0", "-p", "80", "-m", "false", "/app/openapi.yaml"]
 `
 
 const openapiSample = `# https://swagger.io/docs/specification/v3_0/basic-structure/
