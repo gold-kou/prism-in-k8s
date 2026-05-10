@@ -1,4 +1,4 @@
-FROM stoplight/prism:5.8.2
+FROM stoplight/prism:5.15.10
 COPY ./app/openapi.yaml /app/openapi.yaml
 COPY ./app/openapi-sample.yaml /app/openapi-sample.yaml
 COPY ./app/empty_check_and_copy.sh /app/empty_check_and_copy.sh

@@ -9,7 +9,7 @@ import (
 
 const buildContextFileMode fs.FileMode = 0o600
 
-const dockerfile = `FROM stoplight/prism:5.8.2
+const dockerfile = `FROM stoplight/prism:5.15.10
 COPY openapi.yaml /app/openapi.yaml
 COPY openapi-sample.yaml /app/openapi-sample.yaml
 COPY empty_check_and_copy.sh /app/empty_check_and_copy.sh
