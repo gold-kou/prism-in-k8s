@@ -18,11 +18,13 @@ func main() {
 }
 
 func run() error {
+	// flag input
 	isCreate := flag.Bool("create", false, "set to true if running in create mode")
 	isDelete := flag.Bool("delete", false, "set to true if running in delete mode")
 	isTest := flag.Bool("test", false, "set to true if running in test mode")
 	flag.Parse()
 
+	// config input
 	paramsPath := os.Getenv("PARAMS_CONFIG_PATH")
 	if paramsPath == "" {
 		paramsPath = "./params.yaml"
@@ -35,6 +37,7 @@ func run() error {
 		return fmt.Errorf("invalid params: %w", err)
 	}
 
+	// openapi input
 	openapiPath := os.Getenv("OPENAPI_PATH")
 	if openapiPath == "" {
 		openapiPath = "./openapi.yaml"

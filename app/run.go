@@ -36,6 +36,7 @@ func NewApp(ctx context.Context, cfg *params.Config, openapiPath string, isTest 
 		NamespaceName: cfg.MicroserviceNamespace + cfg.PrismMockSuffix,
 	}
 
+	// if test, don't load aws config
 	if !isTest {
 		awsCfg, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
