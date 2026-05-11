@@ -45,6 +45,8 @@ Place your parameters file at `./params.yaml` in your working directory, or set 
   - Your microservice name
 - `microserviceNamespace`
   - Your microservice namespace
+- `prismMockSuffix`
+  - Suffix appended to the microservice name/namespace to form the mock Service and Namespace names (e.g. `-prism-mock`)
 
 ## Step 3. Deploy Mock Resources
 Run the following command to provision the Prism Pod and its associated resources (ECR, Namespace, Deployment, Service, VirtualService):
