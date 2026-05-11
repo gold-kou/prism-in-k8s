@@ -84,31 +84,31 @@ $ prism-in-k8s -delete
 sample:
 
 ```
-microserviceName: "sample"
-microserviceNamespace: "sample"
-prismMockSuffix: "-prism-mock"
+microserviceName: sample
+microserviceNamespace: sample
+prismMockSuffix: -prism-mock
 istioMode: true
 virtualServiceRoutes:
-  - name: "example1"
-    uriPrefix: "/example1/"
-    method: "GET"
+  - name: example1
+    uriPrefix: /example1/
+    method: GET
     delayNanos: 100000000
     delayPercentage: 100
-  - name: "example2"
-    uriPrefix: "/example2/"
-    method: "POST"
-priorityClassName: "high-priority"
+  - name: example2
+    uriPrefix: /example2/
+    method: POST
+priorityClassName: high-priority
 nodeAffinity:
-  - key: "karpenter.sh/nodepool"
-    operator: "In"
+  - key: karpenter.sh/nodepool
+    operator: In
     values:
-      - "default"
-podAntiAffinityTopologyKey: "kubernetes.io/hostname"
+      - default
+podAntiAffinityTopologyKey: kubernetes.io/hostname
 ecrTags:
-  - key: "CostEnv"
-    value: "stg"
-  - key: "CostService"
-    value: "pet-store"
+  - key: CostEnv
+    value: stg
+  - key: CostService
+    value: pet-store
 ```
 
 Note: `podAntiAffinityTopologyKey` uses `requiredDuringSchedulingIgnoredDuringExecution` with the `app` label of the deployed service as the label selector. This means it prevents multiple pods of the same Prism mock service from being scheduled on the same topology (e.g., same node).
