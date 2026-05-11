@@ -2,10 +2,8 @@ package app
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -18,109 +16,87 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-var (
-	isCreate      bool
-	isDelete      bool
-	isTest        bool
-	awsConfig     aws.Config
-	awsAccountID  string
-	kubeConfig    *restclient.Config
-	resourceName  string
-	namespaceName string
-	openapiPath   string
-)
-
-func init() {
-	// command args
-	flag.BoolVar(&isCreate, "create", false, "set to true if running in create mode")
-	flag.BoolVar(&isDelete, "delete", false, "set to true if running in delete mode")
-	flag.BoolVar(&isTest, "test", false, "set to true if running in test mode")
-	flag.Parse()
-
-	// validation parameters
-	err := params.ValidateParams()
-	if err != nil {
-		panic(err)
-	}
-
-	openapiPath = os.Getenv("OPENAPI_PATH")
-	if openapiPath == "" {
-		openapiPath = "./openapi.yaml"
-	}
-
-	if !isTest {
-		// AWS config
-		awsConfig, err = config.LoadDefaultConfig(context.Background())
-		if err != nil {
-			panic(fmt.Errorf("failed to load AWS config: %w", err))
-		}
-
-		// get AWS account ID
-		stsClient := sts.NewFromConfig(awsConfig)
-		result, err := stsClient.GetCallerIdentity(context.Background(), &sts.GetCallerIdentityInput{})
-		if err != nil {
-			panic(fmt.Errorf("failed to get caller identity: %w", err))
-		}
-		awsAccountID = *result.Account
-	}
-
-	// kube config
-	kubeconfigPath := clientcmd.NewDefaultPathOptions().GetDefaultFilename()
-	kubeConfig, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
-	if err != nil {
-		panic(fmt.Errorf("failed to build Kubeconfig: %w", err))
-	}
-
-	// resource name
-	resourceName = "test-microservice"
-	namespaceName = "test-namespace"
-	if params.MicroserviceName != "" && params.MicroserviceNamespace != "" {
-		resourceName = params.MicroserviceName + params.PrismMockSuffix
-		namespaceName = params.MicroserviceNamespace + params.PrismMockSuffix
-	}
+type App struct {
+	Config        *params.Config
+	OpenAPIPath   string
+	IsTest        bool
+	AWSConfig     aws.Config
+	AWSAccountID  string
+	KubeConfig    *restclient.Config
+	ResourceName  string
+	NamespaceName string
 }
 
-func Run() {
-	ctx, cancel := context.WithTimeout(context.Background(), params.Timeout)
-	defer cancel()
-
-	if isCreate {
-		if !isTest {
-			err := registry.BuildAndPushECR(ctx, awsConfig, awsAccountID, resourceName, openapiPath)
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		err := k8s.CreateK8sResources(ctx, awsAccountID, awsConfig, kubeConfig, namespaceName, resourceName, params.IstioMode, isTest)
-		if err != nil {
-			panic(err)
-		}
-
-		if params.IstioMode {
-			err = istio.CreateIstioResources(ctx, kubeConfig, namespaceName, resourceName, params.VirtualServiceRoutes)
-			if err != nil {
-				panic(err)
-			}
-		}
-		slog.Info("All resources for prism mock are created successfully")
-	} else if isDelete {
-		if params.IstioMode {
-			err := istio.DeleteIstioResources(ctx, kubeConfig, namespaceName, resourceName)
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		err := k8s.DeleteK8sResources(ctx, kubeConfig, namespaceName, resourceName)
-		if err != nil {
-			panic(err)
-		}
-
-		err = registry.DeleteECR(ctx, awsConfig, resourceName)
-		if err != nil {
-			panic(err)
-		}
-		slog.Info("All resources for prism mock are deleted successfully")
+func NewApp(ctx context.Context, cfg *params.Config, openapiPath string, isTest bool) (*App, error) {
+	a := &App{
+		Config:        cfg,
+		OpenAPIPath:   openapiPath,
+		IsTest:        isTest,
+		ResourceName:  cfg.MicroserviceName + cfg.PrismMockSuffix,
+		NamespaceName: cfg.MicroserviceNamespace + cfg.PrismMockSuffix,
 	}
+
+	// if test, don't load aws config
+	if !isTest {
+		awsCfg, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load AWS config: %w", err)
+		}
+		stsClient := sts.NewFromConfig(awsCfg)
+		result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get caller identity: %w", err)
+		}
+		a.AWSConfig = awsCfg
+		a.AWSAccountID = *result.Account
+	}
+
+	kubeconfigPath := clientcmd.NewDefaultPathOptions().GetDefaultFilename()
+	kubeCfg, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build Kubeconfig: %w", err)
+	}
+	a.KubeConfig = kubeCfg
+
+	return a, nil
+}
+
+func (a *App) Create(ctx context.Context) error {
+	if !a.IsTest {
+		if err := registry.BuildAndPushECR(ctx, a.Config, a.AWSConfig, a.AWSAccountID, a.ResourceName, a.OpenAPIPath); err != nil {
+			return fmt.Errorf("ECR build/push failed: %w", err)
+		}
+	}
+
+	if err := k8s.CreateK8sResources(ctx, a.Config, a.AWSAccountID, a.AWSConfig, a.KubeConfig, a.NamespaceName, a.ResourceName, a.IsTest); err != nil {
+		return fmt.Errorf("k8s resource creation failed: %w", err)
+	}
+
+	if a.Config.IstioMode {
+		if err := istio.CreateIstioResources(ctx, a.KubeConfig, a.NamespaceName, a.ResourceName, a.Config.VirtualServiceRoutes); err != nil {
+			return fmt.Errorf("istio resource creation failed: %w", err)
+		}
+	}
+
+	slog.Info("All resources for prism mock are created successfully")
+	return nil
+}
+
+func (a *App) Delete(ctx context.Context) error {
+	if a.Config.IstioMode {
+		if err := istio.DeleteIstioResources(ctx, a.KubeConfig, a.NamespaceName, a.ResourceName); err != nil {
+			return fmt.Errorf("istio resource deletion failed: %w", err)
+		}
+	}
+
+	if err := k8s.DeleteK8sResources(ctx, a.KubeConfig, a.NamespaceName, a.ResourceName); err != nil {
+		return fmt.Errorf("k8s resource deletion failed: %w", err)
+	}
+
+	if err := registry.DeleteECR(ctx, a.AWSConfig, a.ResourceName); err != nil {
+		return fmt.Errorf("ECR deletion failed: %w", err)
+	}
+
+	slog.Info("All resources for prism mock are deleted successfully")
+	return nil
 }

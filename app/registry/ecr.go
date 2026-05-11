@@ -16,7 +16,7 @@ import (
 	"github.com/gold-kou/prism-in-k8s/app/params"
 )
 
-func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, resourceName, openapiPath string) error {
+func BuildAndPushECR(ctx context.Context, cfg *params.Config, awsConfig aws.Config, awsAccountID, resourceName, openapiPath string) error {
 	// build Docker image using a temporary build context
 	buildCtx, err := prepareBuildContext(openapiPath)
 	if err != nil {
@@ -24,8 +24,8 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 	}
 	defer func() { _ = os.RemoveAll(buildCtx) }()
 
-	imageTag := params.MicroserviceName + ":v1"
-	cmd := exec.CommandContext(ctx, "docker", "build", "--platform", params.DockerBuildPlatform, "-t", imageTag, buildCtx)
+	imageTag := cfg.MicroserviceName + ":v1"
+	cmd := exec.CommandContext(ctx, "docker", "build", "--platform", cfg.DockerBuildPlatform, "-t", imageTag, buildCtx)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to build docker image: %w", err)
 	}
@@ -33,7 +33,7 @@ func BuildAndPushECR(ctx context.Context, awsConfig aws.Config, awsAccountID, re
 
 	// ECR tags
 	tags := []types.Tag{}
-	for _, ecrTag := range params.EcrTags {
+	for _, ecrTag := range cfg.EcrTags {
 		if ecrTag.Key != "" || ecrTag.Value != "" {
 			tags = append(tags, types.Tag{
 				Key:   aws.String(ecrTag.Key),
