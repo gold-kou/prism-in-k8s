@@ -62,9 +62,9 @@ $ prism-in-k8s -delete
 
 | Parameter Name                | Description                               | Default                        | Required |
 |-------------------------------|-------------------------------------------|--------------------------------|----------|
-| `microserviceName`            | Name of microservice                      | `sample`                       | Yes      |
-| `microserviceNamespace`       | Namespace of microservice                 | `sample`                       | Yes      |
-| `prismMockSuffix`             | Suffix for the mock service name          | `"-prism-mock"`                | Yes      |
+| `microserviceName`            | Name of microservice                      | -                              | Yes      |
+| `microserviceNamespace`       | Namespace of microservice                 | -                              | Yes      |
+| `prismMockSuffix`             | Suffix for the mock service name          | -                              | Yes      |
 | `timeout`                     | Timeout for this tool                     | `10m`                          | No       |
 | `prismPort`                   | Port number for Prism                     | `80`                           | No       |
 | `prismCpu`                    | CPU request for Prism                     | `"500m"`                       | No       |
