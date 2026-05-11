@@ -45,6 +45,8 @@ Place your parameters file at `./params.yaml` in your working directory, or set 
   - Your microservice name
 - `microserviceNamespace`
   - Your microservice namespace
+- `prismMockSuffix`
+  - Suffix appended to the microservice name/namespace to form the mock Service and Namespace names (e.g. `-prism-mock`)
 
 ## Step 3. Deploy Mock Resources
 Run the following command to provision the Prism Pod and its associated resources (ECR, Namespace, Deployment, Service, VirtualService):
@@ -62,10 +64,10 @@ $ prism-in-k8s -delete
 
 | Parameter Name                | Description                               | Default                        | Required |
 |-------------------------------|-------------------------------------------|--------------------------------|----------|
-| `microserviceName`            | Name of microservice                      | `sample`                       | Yes      |
-| `microserviceNamespace`       | Namespace of microservice                 | `sample`                       | Yes      |
-| `prismMockSuffix`             | Suffix for the mock service name          | `"-prism-mock"`                | Yes      |
-| `timeout`                     | Timeout for this tool                     | `10m`                          | No       |
+| `microserviceName`            | Name of microservice                      | -                              | Yes      |
+| `microserviceNamespace`       | Namespace of microservice                 | -                              | Yes      |
+| `prismMockSuffix`             | Suffix for the mock service name          | -                              | Yes      |
+| `timeout`                     | Timeout for this tool                     | `"10m"`                        | No       |
 | `prismPort`                   | Port number for Prism                     | `80`                           | No       |
 | `prismCpu`                    | CPU request for Prism                     | `"500m"`                       | No       |
 | `prismMemory`                 | Memory request for Prism                  | `"512Mi"`                      | No       |
@@ -77,7 +79,7 @@ $ prism-in-k8s -delete
 | `nodeAffinity`                | Node affinity match expressions (key, operator, values). Operators: In, NotIn, Exists, DoesNotExist, Gt, Lt | -                              | No       |
 | `podAntiAffinityTopologyKey`  | Topology key for pod anti-affinity (e.g., `kubernetes.io/hostname`). Prevents multiple pods of the same service from running on the same topology | -                              | No       |
 | `ecrTags`                     | Pairs of ECR tag                          | -                              | No       |
-| `dockerBuildPlatform`         | Target platform passed to `docker build --platform` for the Prism image. Must be `linux/amd64` or `linux/arm64`. Set to `linux/arm64` when the destination cluster runs on Graviton (arm64) nodes. | `linux/amd64`                  | No       |
+| `dockerBuildPlatform`         | Target platform passed to `docker build --platform` for the Prism image. Must be `linux/amd64` or `linux/arm64`. Set to `linux/arm64` when the destination cluster runs on Graviton (arm64) nodes. | `"linux/amd64"`                | No       |
 
 sample:
 
