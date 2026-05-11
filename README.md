@@ -67,48 +67,48 @@ $ prism-in-k8s -delete
 | `microserviceName`            | Name of microservice                      | -                              | Yes      |
 | `microserviceNamespace`       | Namespace of microservice                 | -                              | Yes      |
 | `prismMockSuffix`             | Suffix for the mock service name          | -                              | Yes      |
-| `timeout`                     | Timeout for this tool                     | `10m`                          | No       |
+| `timeout`                     | Timeout for this tool                     | `"10m"`                        | No       |
 | `prismPort`                   | Port number for Prism                     | `80`                           | No       |
-| `prismCpu`                    | CPU request for Prism                     | `500m`                         | No       |
-| `prismMemory`                 | Memory request for Prism                  | `512Mi`                        | No       |
+| `prismCpu`                    | CPU request for Prism                     | `"500m"`                       | No       |
+| `prismMemory`                 | Memory request for Prism                  | `"512Mi"`                      | No       |
 | `istioMode`                   | Whether to use istio                      | `false`                        | No       |
 | `virtualServiceRoutes`        | HTTP routes for the Istio VirtualService. Each entry supports `name` (required), `uriPrefix`, `method` (GET/HEAD/POST/PUT/PATCH/DELETE/CONNECT/OPTIONS/TRACE), `delayNanos` (>=0), and `delayPercentage` (0-100). A trailing catch-all `default` route is appended automatically. Only applied when `istioMode` is `true`. | -                              | No       |
-| `istioProxyCpu`               | CPU request for Istio                     | `500m`                         | No       |
-| `istioProxyMemory`            | Memory request for Istio                  | `512Mi`                        | No       |
+| `istioProxyCpu`               | CPU request for Istio                     | `"500m"`                       | No       |
+| `istioProxyMemory`            | Memory request for Istio                  | `"512Mi"`                      | No       |
 | `priorityClassName`           | Value of priorityClassName                | -                              | No       |
 | `nodeAffinity`                | Node affinity match expressions (key, operator, values). Operators: In, NotIn, Exists, DoesNotExist, Gt, Lt | -                              | No       |
 | `podAntiAffinityTopologyKey`  | Topology key for pod anti-affinity (e.g., `kubernetes.io/hostname`). Prevents multiple pods of the same service from running on the same topology | -                              | No       |
 | `ecrTags`                     | Pairs of ECR tag                          | -                              | No       |
-| `dockerBuildPlatform`         | Target platform passed to `docker build --platform` for the Prism image. Must be `linux/amd64` or `linux/arm64`. Set to `linux/arm64` when the destination cluster runs on Graviton (arm64) nodes. | `linux/amd64`                  | No       |
+| `dockerBuildPlatform`         | Target platform passed to `docker build --platform` for the Prism image. Must be `linux/amd64` or `linux/arm64`. Set to `linux/arm64` when the destination cluster runs on Graviton (arm64) nodes. | `"linux/amd64"`                | No       |
 
 sample:
 
 ```
-microserviceName: sample
-microserviceNamespace: sample
-prismMockSuffix: -prism-mock
+microserviceName: "sample"
+microserviceNamespace: "sample"
+prismMockSuffix: "-prism-mock"
 istioMode: true
 virtualServiceRoutes:
-  - name: example1
-    uriPrefix: /example1/
-    method: GET
+  - name: "example1"
+    uriPrefix: "/example1/"
+    method: "GET"
     delayNanos: 100000000
     delayPercentage: 100
-  - name: example2
-    uriPrefix: /example2/
-    method: POST
-priorityClassName: high-priority
+  - name: "example2"
+    uriPrefix: "/example2/"
+    method: "POST"
+priorityClassName: "high-priority"
 nodeAffinity:
-  - key: karpenter.sh/nodepool
-    operator: In
+  - key: "karpenter.sh/nodepool"
+    operator: "In"
     values:
-      - default
-podAntiAffinityTopologyKey: kubernetes.io/hostname
+      - "default"
+podAntiAffinityTopologyKey: "kubernetes.io/hostname"
 ecrTags:
-  - key: CostEnv
-    value: stg
-  - key: CostService
-    value: pet-store
+  - key: "CostEnv"
+    value: "stg"
+  - key: "CostService"
+    value: "pet-store"
 ```
 
 Note: `podAntiAffinityTopologyKey` uses `requiredDuringSchedulingIgnoredDuringExecution` with the `app` label of the deployed service as the label selector. This means it prevents multiple pods of the same Prism mock service from being scheduled on the same topology (e.g., same node).
