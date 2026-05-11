@@ -68,6 +68,18 @@ func TestLoadConfig_InvalidYAML(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to decode config file")
 }
 
+func TestLoadConfig_TypeMismatch(t *testing.T) {
+	// prismPort is an int field; supplying a non-numeric string must fail
+	// at decode time rather than silently producing a zero value.
+	content := "prismPort: not-a-number\n"
+	path := filepath.Join(t.TempDir(), "params.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+
+	_, err := params.LoadConfig(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to decode config file")
+}
+
 func TestApplyDefaults_OnEmptyConfig(t *testing.T) {
 	cfg := &params.Config{}
 	cfg.ApplyDefaults()
