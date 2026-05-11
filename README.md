@@ -69,12 +69,12 @@ $ prism-in-k8s -delete
 | `prismMockSuffix`             | Suffix for the mock service name          | -                              | Yes      |
 | `timeout`                     | Timeout for this tool                     | `10m`                          | No       |
 | `prismPort`                   | Port number for Prism                     | `80`                           | No       |
-| `prismCpu`                    | CPU request for Prism                     | `"500m"`                       | No       |
-| `prismMemory`                 | Memory request for Prism                  | `"512Mi"`                      | No       |
+| `prismCpu`                    | CPU request for Prism                     | `500m`                         | No       |
+| `prismMemory`                 | Memory request for Prism                  | `512Mi`                        | No       |
 | `istioMode`                   | Whether to use istio                      | `false`                        | No       |
 | `virtualServiceRoutes`        | HTTP routes for the Istio VirtualService. Each entry supports `name` (required), `uriPrefix`, `method` (GET/HEAD/POST/PUT/PATCH/DELETE/CONNECT/OPTIONS/TRACE), `delayNanos` (>=0), and `delayPercentage` (0-100). A trailing catch-all `default` route is appended automatically. Only applied when `istioMode` is `true`. | -                              | No       |
-| `istioProxyCpu`               | CPU request for Istio                     | `"500m"`                       | No       |
-| `istioProxyMemory`            | Memory request for Istio                  | `"512Mi"`                      | No       |
+| `istioProxyCpu`               | CPU request for Istio                     | `500m`                         | No       |
+| `istioProxyMemory`            | Memory request for Istio                  | `512Mi`                        | No       |
 | `priorityClassName`           | Value of priorityClassName                | -                              | No       |
 | `nodeAffinity`                | Node affinity match expressions (key, operator, values). Operators: In, NotIn, Exists, DoesNotExist, Gt, Lt | -                              | No       |
 | `podAntiAffinityTopologyKey`  | Topology key for pod anti-affinity (e.g., `kubernetes.io/hostname`). Prevents multiple pods of the same service from running on the same topology | -                              | No       |
