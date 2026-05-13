@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -176,7 +177,42 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid dockerBuildPlatform: %s (must be linux/amd64 or linux/arm64)", c.DockerBuildPlatform)
 	}
 
+	if err := c.validateKedaParams(); err != nil {
+		return err
+	}
+
 	return c.validateVirtualServiceRoutes()
+}
+
+func (c *Config) validateKedaParams() error {
+	if !c.KedaMode {
+		return nil
+	}
+
+	minR, err := strconv.ParseInt(c.KedaMinReplicas, 10, 64)
+	if err != nil || minR < 0 {
+		return fmt.Errorf("kedaMinReplicas must be a non-negative integer: %q", c.KedaMinReplicas)
+	}
+	maxR, err := strconv.ParseInt(c.KedaMaxReplicas, 10, 64)
+	if err != nil || maxR < 1 {
+		return fmt.Errorf("kedaMaxReplicas must be a positive integer: %q", c.KedaMaxReplicas)
+	}
+	desiredR, err := strconv.ParseInt(c.KedaDesiredReplicas, 10, 64)
+	if err != nil || desiredR < 1 {
+		return fmt.Errorf("kedaDesiredReplicas must be a positive integer: %q", c.KedaDesiredReplicas)
+	}
+	cpu, err := strconv.ParseInt(c.KedaCPUUtilization, 10, 64)
+	if err != nil || cpu < 1 || cpu > 100 {
+		return fmt.Errorf("kedaCpuUtilization must be in [1, 100]: %q", c.KedaCPUUtilization)
+	}
+	if minR > maxR {
+		return fmt.Errorf("kedaMinReplicas (%d) must be <= kedaMaxReplicas (%d)", minR, maxR)
+	}
+	if desiredR > maxR {
+		return fmt.Errorf("kedaDesiredReplicas (%d) must be <= kedaMaxReplicas (%d)", desiredR, maxR)
+	}
+
+	return nil
 }
 
 func (c *Config) validateVirtualServiceRoutes() error {
