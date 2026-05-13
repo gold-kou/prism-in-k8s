@@ -29,14 +29,16 @@ func CreateKedaResources(ctx context.Context, cfg *params.Config, kubeconfig *re
 		return fmt.Errorf("failed to create dynamic client: %w", err)
 	}
 
-	// Fail fast if the KEDA ScaledObject CRD is not installed in the cluster.
-	// dynamic client talks to the API server directly, so a missing CRD surfaces
-	// as a 404 NotFound from the server (apierrors.IsNotFound), not as a
-	// client-side RESTMapper error. Permission or transient errors are deferred
-	// to the actual Create call below.
+	// Fail fast when the API server returns 404 for the ScaledObject resource.
+	// dynamic client talks to the API server directly via the GVR, so a missing
+	// CRD surfaces as apierrors.IsNotFound here (not as a client-side
+	// RESTMapper error). A missing namespace would also produce 404, but in
+	// this call path the namespace is created beforehand by k8s.CreateK8sResources,
+	// so a 404 most likely means KEDA itself is not installed. Permission or
+	// transient errors are deferred to the Create call below.
 	if _, err := dynamicClient.Resource(scaledObjectGVR).Namespace(namespaceName).List(ctx, metav1.ListOptions{Limit: 1}); err != nil {
 		if apierrors.IsNotFound(err) {
-			return fmt.Errorf("KEDA ScaledObject CRD is not installed in the cluster (kedaMode requires KEDA Operator): %w", err)
+			return fmt.Errorf("KEDA ScaledObject CRD or namespace %q not found; kedaMode requires KEDA Operator installed in the cluster: %w", namespaceName, err)
 		}
 	}
 
