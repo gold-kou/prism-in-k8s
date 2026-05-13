@@ -8,7 +8,6 @@ import (
 
 	"github.com/gold-kou/prism-in-k8s/app/params"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,9 +30,12 @@ func CreateKedaResources(ctx context.Context, cfg *params.Config, kubeconfig *re
 	}
 
 	// Fail fast if the KEDA ScaledObject CRD is not installed in the cluster.
-	// Permission or transient errors are deferred to the actual Create call below.
+	// dynamic client talks to the API server directly, so a missing CRD surfaces
+	// as a 404 NotFound from the server (apierrors.IsNotFound), not as a
+	// client-side RESTMapper error. Permission or transient errors are deferred
+	// to the actual Create call below.
 	if _, err := dynamicClient.Resource(scaledObjectGVR).Namespace(namespaceName).List(ctx, metav1.ListOptions{Limit: 1}); err != nil {
-		if meta.IsNoMatchError(err) {
+		if apierrors.IsNotFound(err) {
 			return fmt.Errorf("KEDA ScaledObject CRD is not installed in the cluster (kedaMode requires KEDA Operator): %w", err)
 		}
 	}
