@@ -60,7 +60,15 @@ func DeleteKedaResources(ctx context.Context, kubeconfig *restclient.Config, nam
 }
 
 func BuildScaledObject(cfg *params.Config, resourceName string) *unstructured.Unstructured {
+	minReplicas := int64(0)
+	if v, err := strconv.ParseInt(cfg.KedaMinReplicas, 10, 64); err == nil && v >= 0 {
+		minReplicas = v
+	}
+
 	maxReplicas := int64(1)
+	if v, err := strconv.ParseInt(cfg.KedaMaxReplicas, 10, 64); err == nil && v > 0 {
+		maxReplicas = v
+	}
 	if v, err := strconv.ParseInt(cfg.KedaDesiredReplicas, 10, 64); err == nil && v > maxReplicas {
 		maxReplicas = v
 	}
@@ -76,9 +84,16 @@ func BuildScaledObject(cfg *params.Config, resourceName string) *unstructured.Un
 				"scaleTargetRef": map[string]interface{}{
 					"name": resourceName,
 				},
-				"minReplicaCount": int64(0),
+				"minReplicaCount": minReplicas,
 				"maxReplicaCount": maxReplicas,
 				"triggers": []map[string]interface{}{
+					{
+						"type":       "cpu",
+						"metricType": "Utilization",
+						"metadata": map[string]interface{}{
+							"value": cfg.KedaCPUUtilization,
+						},
+					},
 					{
 						"type": "cron",
 						"metadata": map[string]interface{}{

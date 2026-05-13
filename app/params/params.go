@@ -21,6 +21,9 @@ const (
 	defaultKedaCronStart       = "0 9 * * 1-5"
 	defaultKedaCronEnd         = "0 21 * * 1-5"
 	defaultKedaDesiredReplicas = "1"
+	defaultKedaCPUUtilization  = "50"
+	defaultKedaMinReplicas     = "0"
+	defaultKedaMaxReplicas     = "1"
 	maxDelayPercentage         = 100.0
 )
 
@@ -62,6 +65,9 @@ type Config struct {
 	KedaCronStart                string                        `yaml:"kedaCronStart"`
 	KedaCronEnd                  string                        `yaml:"kedaCronEnd"`
 	KedaDesiredReplicas          string                        `yaml:"kedaDesiredReplicas"`
+	KedaCPUUtilization           string                        `yaml:"kedaCpuUtilization"`
+	KedaMinReplicas              string                        `yaml:"kedaMinReplicas"`
+	KedaMaxReplicas              string                        `yaml:"kedaMaxReplicas"`
 }
 
 type VirtualServiceRoute struct {
@@ -134,6 +140,15 @@ func (c *Config) ApplyDefaults() {
 	}
 	if c.KedaDesiredReplicas == "" {
 		c.KedaDesiredReplicas = defaultKedaDesiredReplicas
+	}
+	if c.KedaCPUUtilization == "" {
+		c.KedaCPUUtilization = defaultKedaCPUUtilization
+	}
+	if c.KedaMinReplicas == "" {
+		c.KedaMinReplicas = defaultKedaMinReplicas
+	}
+	if c.KedaMaxReplicas == "" {
+		c.KedaMaxReplicas = defaultKedaMaxReplicas
 	}
 }
 
