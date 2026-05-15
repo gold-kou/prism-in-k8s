@@ -20,10 +20,10 @@ func TestBuildScaledObject(t *testing.T) {
 		KedaCronTimezone:    testTimezone,
 		KedaCronStart:       testCronStart,
 		KedaCronEnd:         testCronEnd,
-		KedaDesiredReplicas: "1",
-		KedaCPUUtilization:  "50",
-		KedaMinReplicas:     "0",
-		KedaMaxReplicas:     "1",
+		KedaDesiredReplicas: 1,
+		KedaCPUUtilization:  50,
+		KedaMinReplicas:     0,
+		KedaMaxReplicas:     1,
 	}
 
 	resourceName := "test-service-prism-mock"
@@ -85,10 +85,10 @@ func TestBuildScaledObject_DesiredAndMaxEqual(t *testing.T) {
 		KedaCronTimezone:    testTimezone,
 		KedaCronStart:       testCronStart,
 		KedaCronEnd:         testCronEnd,
-		KedaDesiredReplicas: "3",
-		KedaCPUUtilization:  "50",
-		KedaMinReplicas:     "0",
-		KedaMaxReplicas:     "3",
+		KedaDesiredReplicas: 3,
+		KedaCPUUtilization:  50,
+		KedaMinReplicas:     0,
+		KedaMaxReplicas:     3,
 	}
 
 	scaledObject := keda.BuildScaledObject(cfg, "test-resource")
@@ -103,10 +103,10 @@ func TestBuildScaledObject_CustomMinMaxReplicas(t *testing.T) {
 		KedaCronTimezone:    testTimezone,
 		KedaCronStart:       testCronStart,
 		KedaCronEnd:         testCronEnd,
-		KedaDesiredReplicas: "2",
-		KedaCPUUtilization:  "50",
-		KedaMinReplicas:     "1",
-		KedaMaxReplicas:     "5",
+		KedaDesiredReplicas: 2,
+		KedaCPUUtilization:  50,
+		KedaMinReplicas:     1,
+		KedaMaxReplicas:     5,
 	}
 
 	scaledObject := keda.BuildScaledObject(cfg, "test-resource")
@@ -122,10 +122,10 @@ func TestBuildScaledObject_CustomCPUUtilization(t *testing.T) {
 		KedaCronTimezone:    testTimezone,
 		KedaCronStart:       testCronStart,
 		KedaCronEnd:         testCronEnd,
-		KedaDesiredReplicas: "1",
-		KedaCPUUtilization:  "75",
-		KedaMinReplicas:     "0",
-		KedaMaxReplicas:     "1",
+		KedaDesiredReplicas: 1,
+		KedaCPUUtilization:  75,
+		KedaMinReplicas:     0,
+		KedaMaxReplicas:     1,
 	}
 
 	scaledObject := keda.BuildScaledObject(cfg, "test-resource")

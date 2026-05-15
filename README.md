@@ -87,10 +87,10 @@ $ prism-in-k8s -delete
 | `kedaCronTimezone`            | IANA timezone (e.g. `Asia/Tokyo`) used to evaluate the KEDA cron trigger. | `"Asia/Tokyo"`                 | No       |
 | `kedaCronStart`               | Cron expression marking the start of the desired-replicas window. | `"0 9 * * 1-5"`                | No       |
 | `kedaCronEnd`                 | Cron expression marking the end of the desired-replicas window. | `"0 21 * * 1-5"`               | No       |
-| `kedaDesiredReplicas`         | Replica count to scale to while the cron window is active. Must be a positive integer and `<= kedaMaxReplicas`. | `"1"`                          | No       |
-| `kedaCpuUtilization`          | CPU utilization (%) threshold for the KEDA CPU trigger. Must be within `[1, 100]`. | `"50"`                         | No       |
-| `kedaMinReplicas`             | Minimum replica count for the ScaledObject. Must be a non-negative integer and `<= kedaMaxReplicas`. | `"0"`                          | No       |
-| `kedaMaxReplicas`             | Maximum replica count for the ScaledObject. Must be a positive integer. | `"1"`                          | No       |
+| `kedaDesiredReplicas`         | Replica count to scale to while the cron window is active. Must be a positive integer and `<= kedaMaxReplicas`. | `1`                            | No       |
+| `kedaCpuUtilization`          | CPU utilization (%) threshold for the KEDA CPU trigger. Must be within `[1, 100]`. | `50`                           | No       |
+| `kedaMinReplicas`             | Minimum replica count for the ScaledObject. Must be a non-negative integer and `<= kedaMaxReplicas`. | `0`                            | No       |
+| `kedaMaxReplicas`             | Maximum replica count for the ScaledObject. Must be a positive integer. | `1`                            | No       |
 
 sample:
 
@@ -134,10 +134,10 @@ kedaMode: true
 kedaCronTimezone: "Asia/Tokyo"
 kedaCronStart: "0 9 * * 1-5"   # weekdays 09:00
 kedaCronEnd: "0 21 * * 1-5"    # weekdays 21:00
-kedaDesiredReplicas: "1"
-kedaCpuUtilization: "50"
-kedaMinReplicas: "0"
-kedaMaxReplicas: "3"
+kedaDesiredReplicas: 1
+kedaCpuUtilization: 50
+kedaMinReplicas: 0
+kedaMaxReplicas: 3
 ```
 
 With this config, the Prism mock Pod is scaled to `0` outside the cron window (to save cost in non-production environments) and scales up to `kedaMaxReplicas` while CPU utilization exceeds 50% inside the window. KEDA evaluates the cron and CPU triggers in parallel and applies the higher requested replica count.

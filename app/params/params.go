@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -21,10 +20,10 @@ const (
 	defaultKedaCronTimezone    = "Asia/Tokyo"
 	defaultKedaCronStart       = "0 9 * * 1-5"
 	defaultKedaCronEnd         = "0 21 * * 1-5"
-	defaultKedaDesiredReplicas = "1"
-	defaultKedaCPUUtilization  = "50"
-	defaultKedaMinReplicas     = "0"
-	defaultKedaMaxReplicas     = "1"
+	defaultKedaDesiredReplicas = 1
+	defaultKedaCPUUtilization  = 50
+	defaultKedaMinReplicas     = 0
+	defaultKedaMaxReplicas     = 1
 	maxDelayPercentage         = 100.0
 )
 
@@ -65,10 +64,10 @@ type Config struct {
 	KedaCronTimezone             string                        `yaml:"kedaCronTimezone"`
 	KedaCronStart                string                        `yaml:"kedaCronStart"`
 	KedaCronEnd                  string                        `yaml:"kedaCronEnd"`
-	KedaDesiredReplicas          string                        `yaml:"kedaDesiredReplicas"`
-	KedaCPUUtilization           string                        `yaml:"kedaCpuUtilization"`
-	KedaMinReplicas              string                        `yaml:"kedaMinReplicas"`
-	KedaMaxReplicas              string                        `yaml:"kedaMaxReplicas"`
+	KedaDesiredReplicas          int                           `yaml:"kedaDesiredReplicas"`
+	KedaCPUUtilization           int                           `yaml:"kedaCpuUtilization"`
+	KedaMinReplicas              int                           `yaml:"kedaMinReplicas"`
+	KedaMaxReplicas              int                           `yaml:"kedaMaxReplicas"`
 }
 
 type VirtualServiceRoute struct {
@@ -139,16 +138,14 @@ func (c *Config) ApplyDefaults() {
 	if c.KedaCronEnd == "" {
 		c.KedaCronEnd = defaultKedaCronEnd
 	}
-	if c.KedaDesiredReplicas == "" {
+	if c.KedaDesiredReplicas == 0 {
 		c.KedaDesiredReplicas = defaultKedaDesiredReplicas
 	}
-	if c.KedaCPUUtilization == "" {
+	if c.KedaCPUUtilization == 0 {
 		c.KedaCPUUtilization = defaultKedaCPUUtilization
 	}
-	if c.KedaMinReplicas == "" {
-		c.KedaMinReplicas = defaultKedaMinReplicas
-	}
-	if c.KedaMaxReplicas == "" {
+	// KedaMinReplicas has a default of 0, so no zero-value substitution is needed.
+	if c.KedaMaxReplicas == 0 {
 		c.KedaMaxReplicas = defaultKedaMaxReplicas
 	}
 }
@@ -189,27 +186,23 @@ func (c *Config) validateKedaParams() error {
 		return nil
 	}
 
-	minR, err := strconv.ParseInt(c.KedaMinReplicas, 10, 64)
-	if err != nil || minR < 0 {
-		return fmt.Errorf("kedaMinReplicas must be a non-negative integer: %q", c.KedaMinReplicas)
+	if c.KedaMinReplicas < 0 {
+		return fmt.Errorf("kedaMinReplicas must be a non-negative integer: %d", c.KedaMinReplicas)
 	}
-	maxR, err := strconv.ParseInt(c.KedaMaxReplicas, 10, 64)
-	if err != nil || maxR < 1 {
-		return fmt.Errorf("kedaMaxReplicas must be a positive integer: %q", c.KedaMaxReplicas)
+	if c.KedaMaxReplicas < 1 {
+		return fmt.Errorf("kedaMaxReplicas must be a positive integer: %d", c.KedaMaxReplicas)
 	}
-	desiredR, err := strconv.ParseInt(c.KedaDesiredReplicas, 10, 64)
-	if err != nil || desiredR < 1 {
-		return fmt.Errorf("kedaDesiredReplicas must be a positive integer: %q", c.KedaDesiredReplicas)
+	if c.KedaDesiredReplicas < 1 {
+		return fmt.Errorf("kedaDesiredReplicas must be a positive integer: %d", c.KedaDesiredReplicas)
 	}
-	cpu, err := strconv.ParseInt(c.KedaCPUUtilization, 10, 64)
-	if err != nil || cpu < 1 || cpu > 100 {
-		return fmt.Errorf("kedaCpuUtilization must be in [1, 100]: %q", c.KedaCPUUtilization)
+	if c.KedaCPUUtilization < 1 || c.KedaCPUUtilization > 100 {
+		return fmt.Errorf("kedaCpuUtilization must be in [1, 100]: %d", c.KedaCPUUtilization)
 	}
-	if minR > maxR {
-		return fmt.Errorf("kedaMinReplicas (%d) must be <= kedaMaxReplicas (%d)", minR, maxR)
+	if c.KedaMinReplicas > c.KedaMaxReplicas {
+		return fmt.Errorf("kedaMinReplicas (%d) must be <= kedaMaxReplicas (%d)", c.KedaMinReplicas, c.KedaMaxReplicas)
 	}
-	if desiredR > maxR {
-		return fmt.Errorf("kedaDesiredReplicas (%d) must be <= kedaMaxReplicas (%d)", desiredR, maxR)
+	if c.KedaDesiredReplicas > c.KedaMaxReplicas {
+		return fmt.Errorf("kedaDesiredReplicas (%d) must be <= kedaMaxReplicas (%d)", c.KedaDesiredReplicas, c.KedaMaxReplicas)
 	}
 
 	return nil

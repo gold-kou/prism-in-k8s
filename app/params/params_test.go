@@ -258,48 +258,43 @@ func TestValidate_KedaErrors(t *testing.T) {
 		errSubstr string
 	}{
 		{
-			name:      "non-numeric kedaMinReplicas",
-			mutate:    func(c *params.Config) { c.KedaMinReplicas = "abc" },
-			errSubstr: "kedaMinReplicas must be a non-negative integer",
-		},
-		{
 			name:      "negative kedaMinReplicas",
-			mutate:    func(c *params.Config) { c.KedaMinReplicas = "-1" },
+			mutate:    func(c *params.Config) { c.KedaMinReplicas = -1 },
 			errSubstr: "kedaMinReplicas must be a non-negative integer",
 		},
 		{
-			name:      "zero kedaMaxReplicas",
-			mutate:    func(c *params.Config) { c.KedaMaxReplicas = "0" },
+			name:      "negative kedaMaxReplicas",
+			mutate:    func(c *params.Config) { c.KedaMaxReplicas = -1 },
 			errSubstr: "kedaMaxReplicas must be a positive integer",
 		},
 		{
-			name:      "zero kedaDesiredReplicas",
-			mutate:    func(c *params.Config) { c.KedaDesiredReplicas = "0" },
+			name:      "negative kedaDesiredReplicas",
+			mutate:    func(c *params.Config) { c.KedaDesiredReplicas = -1 },
 			errSubstr: "kedaDesiredReplicas must be a positive integer",
 		},
 		{
-			name:      "kedaCpuUtilization below range",
-			mutate:    func(c *params.Config) { c.KedaCPUUtilization = "0" },
+			name:      "negative kedaCpuUtilization",
+			mutate:    func(c *params.Config) { c.KedaCPUUtilization = -1 },
 			errSubstr: "kedaCpuUtilization must be in [1, 100]",
 		},
 		{
 			name:      "kedaCpuUtilization above 100",
-			mutate:    func(c *params.Config) { c.KedaCPUUtilization = "101" },
+			mutate:    func(c *params.Config) { c.KedaCPUUtilization = 101 },
 			errSubstr: "kedaCpuUtilization must be in [1, 100]",
 		},
 		{
 			name: "kedaMinReplicas exceeds kedaMaxReplicas",
 			mutate: func(c *params.Config) {
-				c.KedaMinReplicas = "5"
-				c.KedaMaxReplicas = "1"
+				c.KedaMinReplicas = 5
+				c.KedaMaxReplicas = 1
 			},
 			errSubstr: "kedaMinReplicas (5) must be <= kedaMaxReplicas (1)",
 		},
 		{
 			name: "kedaDesiredReplicas exceeds kedaMaxReplicas",
 			mutate: func(c *params.Config) {
-				c.KedaDesiredReplicas = "3"
-				c.KedaMaxReplicas = "1"
+				c.KedaDesiredReplicas = 3
+				c.KedaMaxReplicas = 1
 			},
 			errSubstr: "kedaDesiredReplicas (3) must be <= kedaMaxReplicas (1)",
 		},

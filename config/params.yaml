@@ -14,7 +14,7 @@ prismMockSuffix: "-prism-mock"
 # kedaCronTimezone: "Asia/Tokyo"       # default: Asia/Tokyo
 # kedaCronStart: "0 9 * * 1-5"         # default: weekdays 09:00
 # kedaCronEnd: "0 21 * * 1-5"          # default: weekdays 21:00
-# kedaDesiredReplicas: "1"             # default: 1
-# kedaCpuUtilization: "50"             # default: 50 (Utilization %)
-# kedaMinReplicas: "0"                 # default: 0
-# kedaMaxReplicas: "1"                 # default: 1
+# kedaDesiredReplicas: 1               # default: 1
+# kedaCpuUtilization: 50               # default: 50 (Utilization %)
+# kedaMinReplicas: 0                   # default: 0
+# kedaMaxReplicas: 1                   # default: 1
