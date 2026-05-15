@@ -142,7 +142,7 @@ kedaMaxReplicas: "3"
 
 With this config, the Prism mock Pod is scaled to `0` outside the cron window (to save cost in non-production environments) and scales up to `kedaMaxReplicas` while CPU utilization exceeds 50% inside the window. KEDA evaluates the cron and CPU triggers in parallel and applies the higher requested replica count.
 
-Note: When `kedaMode` is `true`, KEDA must be installed in the target cluster. If the `ScaledObject` CRD is missing, `prism-in-k8s -create` fails fast with a clear error rather than leaving a half-created Deployment behind. After scaling down, KEDA's default `cooldownPeriod` (300 seconds) applies before the replica count drops to `kedaMinReplicas`.
+Note: When `kedaMode` is `true`, KEDA must be installed in the target cluster. If the `ScaledObject` CRD is missing, the KEDA step fails fast with a clear error; the Deployment, Service, and Namespace created by the preceding steps remain in the cluster, so re-run with `-delete` (or install KEDA and retry `-create`) to clean up. After scaling down, KEDA's default `cooldownPeriod` (300 seconds) applies before the replica count drops to `kedaMinReplicas`.
 
 # For developers
 Additional requirement when building from source:
