@@ -106,8 +106,10 @@ func (a *App) Delete(ctx context.Context) error {
 		return fmt.Errorf("k8s resource deletion failed: %w", err)
 	}
 
-	if err := registry.DeleteECR(ctx, a.AWSConfig, a.ResourceName); err != nil {
-		return fmt.Errorf("ECR deletion failed: %w", err)
+	if !a.IsTest {
+		if err := registry.DeleteECR(ctx, a.AWSConfig, a.ResourceName); err != nil {
+			return fmt.Errorf("ECR deletion failed: %w", err)
+		}
 	}
 
 	slog.Info("All resources for prism mock are deleted successfully")
