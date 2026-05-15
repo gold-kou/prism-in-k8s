@@ -46,6 +46,8 @@ func TestBuildScaledObject(t *testing.T) {
 
 	scaleTargetRef, isMap := spec["scaleTargetRef"].(map[string]interface{})
 	require.True(t, isMap)
+	assert.Equal(t, "apps/v1", scaleTargetRef["apiVersion"])
+	assert.Equal(t, "Deployment", scaleTargetRef["kind"])
 	assert.Equal(t, resourceName, scaleTargetRef["name"])
 
 	assert.Equal(t, int64(0), spec["minReplicaCount"])

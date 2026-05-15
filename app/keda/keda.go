@@ -90,7 +90,9 @@ func BuildScaledObject(cfg *params.Config, resourceName string) *unstructured.Un
 			},
 			"spec": map[string]interface{}{
 				"scaleTargetRef": map[string]interface{}{
-					"name": resourceName,
+					"apiVersion": "apps/v1",
+					"kind":       "Deployment",
+					"name":       resourceName,
 				},
 				"minReplicaCount": minReplicas,
 				"maxReplicaCount": maxReplicas,
