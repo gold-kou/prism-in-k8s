@@ -9,12 +9,11 @@ prismMockSuffix: "-prism-mock"
 #     delayNanos: 100000000  # 100ms
 #     delayPercentage: 100.0
 
-# KEDA ScaledObject with CPU + Cron triggers (optional, requires KEDA installed in cluster)
+# KEDA ScaledObject with Cron trigger (optional, requires KEDA installed in cluster)
 # kedaMode: true
 # kedaCronTimezone: "Asia/Tokyo"       # default: Asia/Tokyo
 # kedaCronStart: "0 9 * * 1-5"         # default: weekdays 09:00
 # kedaCronEnd: "0 21 * * 1-5"          # default: weekdays 21:00
 # kedaDesiredReplicas: 1               # default: 1
-# kedaCpuUtilization: 50               # default: 50 (Utilization %)
 # kedaMinReplicas: 0                   # default: 0
 # kedaMaxReplicas: 1                   # default: 1

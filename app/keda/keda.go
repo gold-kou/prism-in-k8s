@@ -78,8 +78,7 @@ func DeleteKedaResources(ctx context.Context, kubeconfig *restclient.Config, nam
 // Caller must have run cfg.Validate() so that KEDA numeric params are well-formed
 // and the invariants (min <= max, desired <= max) hold.
 func BuildScaledObject(cfg *params.Config, resourceName string) *unstructured.Unstructured {
-	// KEDA trigger metadata expects string values, so convert the int params at the boundary.
-	cpuUtilization := strconv.Itoa(cfg.KedaCPUUtilization)
+	// KEDA trigger metadata expects string values, so convert the int param at the boundary.
 	desiredReplicas := strconv.Itoa(cfg.KedaDesiredReplicas)
 
 	scaledObject := &unstructured.Unstructured{
@@ -98,13 +97,6 @@ func BuildScaledObject(cfg *params.Config, resourceName string) *unstructured.Un
 				"minReplicaCount": int64(cfg.KedaMinReplicas),
 				"maxReplicaCount": int64(cfg.KedaMaxReplicas),
 				"triggers": []map[string]interface{}{
-					{
-						"type":       "cpu",
-						"metricType": "Utilization",
-						metadataKey: map[string]interface{}{
-							"value": cpuUtilization,
-						},
-					},
 					{
 						"type": "cron",
 						metadataKey: map[string]interface{}{

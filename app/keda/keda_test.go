@@ -21,7 +21,6 @@ func TestBuildScaledObject(t *testing.T) {
 		KedaCronStart:       testCronStart,
 		KedaCronEnd:         testCronEnd,
 		KedaDesiredReplicas: 1,
-		KedaCPUUtilization:  50,
 		KedaMinReplicas:     0,
 		KedaMaxReplicas:     1,
 	}
@@ -53,21 +52,12 @@ func TestBuildScaledObject(t *testing.T) {
 	assert.Equal(t, int64(0), spec["minReplicaCount"])
 	assert.Equal(t, int64(1), spec["maxReplicaCount"])
 
-	// verify triggers
+	// verify triggers (cron-only)
 	triggers, isSlice := spec["triggers"].([]map[string]interface{})
 	require.True(t, isSlice)
-	require.Len(t, triggers, 2)
+	require.Len(t, triggers, 1)
 
-	// CPU trigger (index 0)
-	cpuTrigger := triggers[0]
-	assert.Equal(t, "cpu", cpuTrigger["type"])
-	assert.Equal(t, "Utilization", cpuTrigger["metricType"])
-	cpuMetadata, isMap := cpuTrigger["metadata"].(map[string]interface{})
-	require.True(t, isMap)
-	assert.Equal(t, "50", cpuMetadata["value"])
-
-	// Cron trigger (index 1)
-	cronTrigger := triggers[1]
+	cronTrigger := triggers[0]
 	assert.Equal(t, "cron", cronTrigger["type"])
 
 	cronMetadata, isMap := cronTrigger["metadata"].(map[string]interface{})
@@ -86,7 +76,6 @@ func TestBuildScaledObject_DesiredAndMaxEqual(t *testing.T) {
 		KedaCronStart:       testCronStart,
 		KedaCronEnd:         testCronEnd,
 		KedaDesiredReplicas: 3,
-		KedaCPUUtilization:  50,
 		KedaMinReplicas:     0,
 		KedaMaxReplicas:     3,
 	}
@@ -104,7 +93,6 @@ func TestBuildScaledObject_CustomMinMaxReplicas(t *testing.T) {
 		KedaCronStart:       testCronStart,
 		KedaCronEnd:         testCronEnd,
 		KedaDesiredReplicas: 2,
-		KedaCPUUtilization:  50,
 		KedaMinReplicas:     1,
 		KedaMaxReplicas:     5,
 	}
@@ -115,28 +103,4 @@ func TestBuildScaledObject_CustomMinMaxReplicas(t *testing.T) {
 
 	assert.Equal(t, int64(1), spec["minReplicaCount"], "minReplicaCount should reflect KedaMinReplicas")
 	assert.Equal(t, int64(5), spec["maxReplicaCount"], "maxReplicaCount should reflect KedaMaxReplicas when desired < max")
-}
-
-func TestBuildScaledObject_CustomCPUUtilization(t *testing.T) {
-	cfg := &params.Config{
-		KedaCronTimezone:    testTimezone,
-		KedaCronStart:       testCronStart,
-		KedaCronEnd:         testCronEnd,
-		KedaDesiredReplicas: 1,
-		KedaCPUUtilization:  75,
-		KedaMinReplicas:     0,
-		KedaMaxReplicas:     1,
-	}
-
-	scaledObject := keda.BuildScaledObject(cfg, "test-resource")
-	spec, isMap := scaledObject.Object["spec"].(map[string]interface{})
-	require.True(t, isMap)
-
-	triggers, isSlice := spec["triggers"].([]map[string]interface{})
-	require.True(t, isSlice)
-	require.Len(t, triggers, 2)
-
-	cpuMetadata, isMap := triggers[0]["metadata"].(map[string]interface{})
-	require.True(t, isMap)
-	assert.Equal(t, "75", cpuMetadata["value"], "CPU value should reflect configured KedaCPUUtilization")
 }

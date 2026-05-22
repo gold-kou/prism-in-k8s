@@ -6,11 +6,11 @@ Beyond just creating Prism Pods, this tool automates the provisioning of:
 - AWS ECR
 - Kubernetes Namespace, Deployment, and Service
 - Istio VirtualService (allowing for advanced features like fault injection)
-- KEDA ScaledObject (optional, for CPU- and Cron-based Pod autoscaling)
+- KEDA ScaledObject (optional, for Cron-based Pod autoscaling)
 
 By configuring the VirtualService, you can introduce fixed delays using fault injection to create a more realistic testing environment.
 
-By configuring KEDA mode, you can scale the Prism Pod between configurable min/max replicas based on CPU utilization and a scheduled window (e.g. business hours), which helps reduce cost in non-production environments.
+By configuring KEDA mode, you can scale the Prism Pod between configurable min/max replicas based on a scheduled window (e.g. business hours), which helps reduce cost in non-production environments.
 
 # Prerequisites
 Before using this tool, ensure you have the following installed and configured:
@@ -88,7 +88,6 @@ $ prism-in-k8s -delete
 | `kedaCronStart`               | Cron expression marking the start of the desired-replicas window. | `"0 9 * * 1-5"`                | No       |
 | `kedaCronEnd`                 | Cron expression marking the end of the desired-replicas window. | `"0 21 * * 1-5"`               | No       |
 | `kedaDesiredReplicas`         | Replica count to scale to while the cron window is active. Must be a positive integer and `<= kedaMaxReplicas`. | `1`                            | No       |
-| `kedaCpuUtilization`          | CPU utilization (%) threshold for the KEDA CPU trigger. Must be within `[1, 100]`. | `50`                           | No       |
 | `kedaMinReplicas`             | Minimum replica count for the ScaledObject. Must be a non-negative integer and `<= kedaMaxReplicas`. | `0`                            | No       |
 | `kedaMaxReplicas`             | Maximum replica count for the ScaledObject. Must be a positive integer. | `1`                            | No       |
 
@@ -135,12 +134,11 @@ kedaCronTimezone: "Asia/Tokyo"
 kedaCronStart: "0 9 * * 1-5"   # weekdays 09:00
 kedaCronEnd: "0 21 * * 1-5"    # weekdays 21:00
 kedaDesiredReplicas: 1
-kedaCpuUtilization: 50
 kedaMinReplicas: 0
-kedaMaxReplicas: 3
+kedaMaxReplicas: 1
 ```
 
-With this config, the Prism mock Pod is scaled to `0` outside the cron window (to save cost in non-production environments) and scales up to `kedaMaxReplicas` while CPU utilization exceeds 50% inside the window. KEDA evaluates the cron and CPU triggers in parallel and applies the higher requested replica count.
+With this config, the Prism mock Pod is scaled to `0` outside the cron window (to save cost in non-production environments) and runs `kedaDesiredReplicas` Pod(s) inside the window.
 
 Note: When `kedaMode` is `true`, KEDA must be installed in the target cluster. If the `ScaledObject` CRD is missing, the KEDA step fails fast with a clear error; the Deployment, Service, and Namespace created by the preceding steps remain in the cluster, so re-run with `-delete` (or install KEDA and retry `-create`) to clean up. After scaling down, KEDA's default `cooldownPeriod` (300 seconds) applies before the replica count drops to `kedaMinReplicas`.
 

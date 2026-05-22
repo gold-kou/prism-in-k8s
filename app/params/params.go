@@ -21,7 +21,6 @@ const (
 	defaultKedaCronStart       = "0 9 * * 1-5"
 	defaultKedaCronEnd         = "0 21 * * 1-5"
 	defaultKedaDesiredReplicas = 1
-	defaultKedaCPUUtilization  = 50
 	defaultKedaMinReplicas     = 0
 	defaultKedaMaxReplicas     = 1
 	maxDelayPercentage         = 100.0
@@ -65,7 +64,6 @@ type Config struct {
 	KedaCronStart                string                        `yaml:"kedaCronStart"`
 	KedaCronEnd                  string                        `yaml:"kedaCronEnd"`
 	KedaDesiredReplicas          int                           `yaml:"kedaDesiredReplicas"`
-	KedaCPUUtilization           int                           `yaml:"kedaCpuUtilization"`
 	KedaMinReplicas              int                           `yaml:"kedaMinReplicas"`
 	KedaMaxReplicas              int                           `yaml:"kedaMaxReplicas"`
 }
@@ -141,9 +139,6 @@ func (c *Config) ApplyDefaults() {
 	if c.KedaDesiredReplicas == 0 {
 		c.KedaDesiredReplicas = defaultKedaDesiredReplicas
 	}
-	if c.KedaCPUUtilization == 0 {
-		c.KedaCPUUtilization = defaultKedaCPUUtilization
-	}
 	// KedaMinReplicas has a default of 0, so no zero-value substitution is needed.
 	if c.KedaMaxReplicas == 0 {
 		c.KedaMaxReplicas = defaultKedaMaxReplicas
@@ -194,9 +189,6 @@ func (c *Config) validateKedaParams() error {
 	}
 	if c.KedaDesiredReplicas < 1 {
 		return fmt.Errorf("kedaDesiredReplicas must be a positive integer: %d", c.KedaDesiredReplicas)
-	}
-	if c.KedaCPUUtilization < 1 || c.KedaCPUUtilization > 100 {
-		return fmt.Errorf("kedaCpuUtilization must be in [1, 100]: %d", c.KedaCPUUtilization)
 	}
 	if c.KedaMinReplicas > c.KedaMaxReplicas {
 		return fmt.Errorf("kedaMinReplicas (%d) must be <= kedaMaxReplicas (%d)", c.KedaMinReplicas, c.KedaMaxReplicas)

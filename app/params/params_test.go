@@ -273,16 +273,6 @@ func TestValidate_KedaErrors(t *testing.T) {
 			errSubstr: "kedaDesiredReplicas must be a positive integer",
 		},
 		{
-			name:      "negative kedaCpuUtilization",
-			mutate:    func(c *params.Config) { c.KedaCPUUtilization = -1 },
-			errSubstr: "kedaCpuUtilization must be in [1, 100]",
-		},
-		{
-			name:      "kedaCpuUtilization above 100",
-			mutate:    func(c *params.Config) { c.KedaCPUUtilization = 101 },
-			errSubstr: "kedaCpuUtilization must be in [1, 100]",
-		},
-		{
 			name: "kedaMinReplicas exceeds kedaMaxReplicas",
 			mutate: func(c *params.Config) {
 				c.KedaMinReplicas = 5
