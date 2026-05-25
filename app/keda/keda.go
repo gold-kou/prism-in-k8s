@@ -40,6 +40,7 @@ func CreateKedaResources(ctx context.Context, cfg *params.Config, kubeconfig *re
 		if apierrors.IsNotFound(err) {
 			return fmt.Errorf("KEDA ScaledObject CRD or namespace %q not found; kedaMode requires KEDA Operator installed in the cluster: %w", namespaceName, err)
 		}
+		slog.Warn("Failed to list ScaledObject during pre-flight check; deferring to Create", "namespace", namespaceName, "error", err)
 	}
 
 	scaledObject := BuildScaledObject(cfg, resourceName)
