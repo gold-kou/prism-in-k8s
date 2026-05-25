@@ -15,8 +15,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 )
 
-const metadataKey = "metadata"
-
 var scaledObjectGVR = schema.GroupVersionResource{
 	Group:    "keda.sh",
 	Version:  "v1alpha1",
@@ -86,7 +84,7 @@ func BuildScaledObject(cfg *params.Config, resourceName string) *unstructured.Un
 		Object: map[string]interface{}{
 			"apiVersion": "keda.sh/v1alpha1",
 			"kind":       "ScaledObject",
-			metadataKey: map[string]interface{}{
+			"metadata": map[string]interface{}{
 				"name": resourceName,
 			},
 			"spec": map[string]interface{}{
@@ -100,7 +98,7 @@ func BuildScaledObject(cfg *params.Config, resourceName string) *unstructured.Un
 				"triggers": []map[string]interface{}{
 					{
 						"type": "cron",
-						metadataKey: map[string]interface{}{
+						"metadata": map[string]interface{}{
 							"timezone":        cfg.KedaCronTimezone,
 							"start":           cfg.KedaCronStart,
 							"end":             cfg.KedaCronEnd,
