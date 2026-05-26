@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/gold-kou/prism-in-k8s/app/istio"
 	"github.com/gold-kou/prism-in-k8s/app/k8s"
+	"github.com/gold-kou/prism-in-k8s/app/keda"
 	"github.com/gold-kou/prism-in-k8s/app/params"
 	"github.com/gold-kou/prism-in-k8s/app/registry"
 	restclient "k8s.io/client-go/rest"
@@ -78,6 +79,12 @@ func (a *App) Create(ctx context.Context) error {
 		}
 	}
 
+	if a.Config.KedaMode {
+		if err := keda.CreateKedaResources(ctx, a.Config, a.KubeConfig, a.NamespaceName, a.ResourceName); err != nil {
+			return fmt.Errorf("KEDA resource creation failed: %w", err)
+		}
+	}
+
 	slog.Info("All resources for prism mock are created successfully")
 	return nil
 }
@@ -89,12 +96,20 @@ func (a *App) Delete(ctx context.Context) error {
 		}
 	}
 
+	if a.Config.KedaMode {
+		if err := keda.DeleteKedaResources(ctx, a.KubeConfig, a.NamespaceName, a.ResourceName); err != nil {
+			return fmt.Errorf("KEDA resource deletion failed: %w", err)
+		}
+	}
+
 	if err := k8s.DeleteK8sResources(ctx, a.KubeConfig, a.NamespaceName, a.ResourceName); err != nil {
 		return fmt.Errorf("k8s resource deletion failed: %w", err)
 	}
 
-	if err := registry.DeleteECR(ctx, a.AWSConfig, a.ResourceName); err != nil {
-		return fmt.Errorf("ECR deletion failed: %w", err)
+	if !a.IsTest {
+		if err := registry.DeleteECR(ctx, a.AWSConfig, a.ResourceName); err != nil {
+			return fmt.Errorf("ECR deletion failed: %w", err)
+		}
 	}
 
 	slog.Info("All resources for prism mock are deleted successfully")

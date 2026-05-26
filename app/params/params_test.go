@@ -244,3 +244,60 @@ func validConfig() *params.Config {
 		PrismMockSuffix:       "-mock",
 	}
 }
+
+func TestValidate_KedaHappyPath(t *testing.T) {
+	cfg := validConfig()
+	cfg.KedaMode = true
+	require.NoError(t, cfg.Validate())
+}
+
+func TestValidate_KedaErrors(t *testing.T) {
+	tests := []struct {
+		name      string
+		mutate    func(*params.Config)
+		errSubstr string
+	}{
+		{
+			name:      "negative kedaMinReplicas",
+			mutate:    func(c *params.Config) { c.KedaMinReplicas = -1 },
+			errSubstr: "kedaMinReplicas must be a non-negative integer",
+		},
+		{
+			name:      "negative kedaMaxReplicas",
+			mutate:    func(c *params.Config) { c.KedaMaxReplicas = -1 },
+			errSubstr: "kedaMaxReplicas must be a positive integer",
+		},
+		{
+			name:      "negative kedaDesiredReplicas",
+			mutate:    func(c *params.Config) { c.KedaDesiredReplicas = -1 },
+			errSubstr: "kedaDesiredReplicas must be a positive integer",
+		},
+		{
+			name: "kedaMinReplicas exceeds kedaMaxReplicas",
+			mutate: func(c *params.Config) {
+				c.KedaMinReplicas = 5
+				c.KedaMaxReplicas = 1
+			},
+			errSubstr: "kedaMinReplicas (5) must be <= kedaMaxReplicas (1)",
+		},
+		{
+			name: "kedaDesiredReplicas exceeds kedaMaxReplicas",
+			mutate: func(c *params.Config) {
+				c.KedaDesiredReplicas = 3
+				c.KedaMaxReplicas = 1
+			},
+			errSubstr: "kedaDesiredReplicas (3) must be <= kedaMaxReplicas (1)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validConfig()
+			cfg.KedaMode = true
+			tt.mutate(cfg)
+			err := cfg.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.errSubstr)
+		})
+	}
+}

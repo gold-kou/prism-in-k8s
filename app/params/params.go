@@ -17,6 +17,12 @@ const (
 	defaultIstioProxyCPU       = "500m"
 	defaultIstioProxyMemory    = "512Mi"
 	defaultDockerBuildPlatform = "linux/amd64"
+	defaultKedaCronTimezone    = "Asia/Tokyo"
+	defaultKedaCronStart       = "0 9 * * 1-5"
+	defaultKedaCronEnd         = "0 21 * * 1-5"
+	defaultKedaDesiredReplicas = 1
+	defaultKedaMinReplicas     = 0
+	defaultKedaMaxReplicas     = 1
 	maxDelayPercentage         = 100.0
 )
 
@@ -53,6 +59,13 @@ type Config struct {
 	EcrTags                      []ECRTag                      `yaml:"ecrTags"`
 	VirtualServiceRoutes         []VirtualServiceRoute         `yaml:"virtualServiceRoutes"`
 	DockerBuildPlatform          string                        `yaml:"dockerBuildPlatform"`
+	KedaMode                     bool                          `yaml:"kedaMode"`
+	KedaCronTimezone             string                        `yaml:"kedaCronTimezone"`
+	KedaCronStart                string                        `yaml:"kedaCronStart"`
+	KedaCronEnd                  string                        `yaml:"kedaCronEnd"`
+	KedaDesiredReplicas          int                           `yaml:"kedaDesiredReplicas"`
+	KedaMinReplicas              int                           `yaml:"kedaMinReplicas"`
+	KedaMaxReplicas              int                           `yaml:"kedaMaxReplicas"`
 }
 
 type VirtualServiceRoute struct {
@@ -114,6 +127,22 @@ func (c *Config) ApplyDefaults() {
 	if c.DockerBuildPlatform == "" {
 		c.DockerBuildPlatform = defaultDockerBuildPlatform
 	}
+	if c.KedaCronTimezone == "" {
+		c.KedaCronTimezone = defaultKedaCronTimezone
+	}
+	if c.KedaCronStart == "" {
+		c.KedaCronStart = defaultKedaCronStart
+	}
+	if c.KedaCronEnd == "" {
+		c.KedaCronEnd = defaultKedaCronEnd
+	}
+	if c.KedaDesiredReplicas == 0 {
+		c.KedaDesiredReplicas = defaultKedaDesiredReplicas
+	}
+	// KedaMinReplicas has a default of 0, so no zero-value substitution is needed.
+	if c.KedaMaxReplicas == 0 {
+		c.KedaMaxReplicas = defaultKedaMaxReplicas
+	}
 }
 
 func (c *Config) Validate() error {
@@ -140,7 +169,35 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid dockerBuildPlatform: %s (must be linux/amd64 or linux/arm64)", c.DockerBuildPlatform)
 	}
 
+	if err := c.validateKedaParams(); err != nil {
+		return err
+	}
+
 	return c.validateVirtualServiceRoutes()
+}
+
+func (c *Config) validateKedaParams() error {
+	if !c.KedaMode {
+		return nil
+	}
+
+	if c.KedaMinReplicas < 0 {
+		return fmt.Errorf("kedaMinReplicas must be a non-negative integer: %d", c.KedaMinReplicas)
+	}
+	if c.KedaMaxReplicas < 1 {
+		return fmt.Errorf("kedaMaxReplicas must be a positive integer: %d", c.KedaMaxReplicas)
+	}
+	if c.KedaDesiredReplicas < 1 {
+		return fmt.Errorf("kedaDesiredReplicas must be a positive integer: %d", c.KedaDesiredReplicas)
+	}
+	if c.KedaMinReplicas > c.KedaMaxReplicas {
+		return fmt.Errorf("kedaMinReplicas (%d) must be <= kedaMaxReplicas (%d)", c.KedaMinReplicas, c.KedaMaxReplicas)
+	}
+	if c.KedaDesiredReplicas > c.KedaMaxReplicas {
+		return fmt.Errorf("kedaDesiredReplicas (%d) must be <= kedaMaxReplicas (%d)", c.KedaDesiredReplicas, c.KedaMaxReplicas)
+	}
+
+	return nil
 }
 
 func (c *Config) validateVirtualServiceRoutes() error {
